@@ -160,7 +160,7 @@ cython_debug/
 #.idea/
 
 # MYST site 
-*/_build
+src/_build
 
 
 # michael
