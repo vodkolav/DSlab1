@@ -160,6 +160,8 @@ cython_debug/
 #.idea/
 
 # MYST site 
-*/_build
+src/_build
 
 
+# michael
+src/CV_Runs
