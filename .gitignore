@@ -165,3 +165,5 @@ src/_build
 
 # michael
 src/CV_Runs
+DSlab2/logs
+**/data
