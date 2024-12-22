@@ -1,0 +1,14 @@
+name: NLP
+channels:
+- defaults
+- conda-forge
+dependencies:
+- matplotlib=3.*
+- spacy=3.*
+- seaborn=0.*
+- pytorch=2.*
+- nltk=3.*
+- gensim=4.*
+- ipykernel=6.*
+- scikit-learn=1.*
+- pip=24.*
