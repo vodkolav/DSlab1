@@ -167,3 +167,6 @@ DSlab1/_build
 DSlab1/CV_Runs
 DSlab2/logs
 **/data
+
+# ignore .idea folder created by pycharm
+.idea/
