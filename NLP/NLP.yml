@@ -1,16 +1,18 @@
 name: NLP
 channels:
-- defaults
-- conda-forge
+  - defaults
+  - conda-forge
 dependencies:
-- pandasql=0.*
-- matplotlib=3.*
-- ipykernel=6.*
-- pip=24.*
-- spacy=3.*
-- gensim=4.*
-- seaborn=0.*
-- chardet=4.*
-- pytorch=2.*
-- nltk=3.*
-- scikit-learn=1.*
+  - beautifulsoup4=4.*
+  - chardet=4.*
+  - gensim=4.*
+  - ipykernel=6.*
+  - matplotlib=3.*
+  - nltk=3.*
+  - pandasql=0.*
+  - pip=24.*
+  - pytorch=2.*
+  - scikit-learn=1.*
+  - seaborn=0.*
+  - selenium=4.*
+  - spacy=3.*
