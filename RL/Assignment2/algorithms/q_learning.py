@@ -40,6 +40,18 @@ class QLearning(RLAlgorithm):
         # State to track epsilon decay
         self._current_episode = 0
 
+    def get_parameters(self) -> dict:
+        """
+        Returns the parameters of the Q-Learning algorithm.
+        """
+        return {
+            "algorithm": __class__.__name__,
+            "gamma": self.gamma,
+            "alpha": self.alpha,
+            "initial_epsilon": self.initial_epsilon,
+            "min_epsilon": self.min_epsilon,
+            "epsilon_decay_episodes": self.epsilon_decay_episodes
+        }
 
     def choose_action(self, state: int) -> int:
         """
@@ -70,6 +82,8 @@ class QLearning(RLAlgorithm):
          if terminated or truncated:
              self._current_episode += 1
 
+    def get_intestines(self):
+        return self.q_table
 
     def get_policy(self) -> np.ndarray:
         """

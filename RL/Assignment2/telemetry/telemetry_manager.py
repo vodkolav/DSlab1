@@ -2,41 +2,60 @@
 from collections import defaultdict
 import numpy as np
 import json
+from datetime import datetime
+from copy import deepcopy
 
 class TelemetryManager:
     """
     Manages the collection of training and evaluation metrics.
     """
-    def __init__(self):
+    def __init__(self, env, algorithm):
+        
+        self.metadata = {
+            "start_time": datetime.now().strftime(r"%y.%m.%d-%H.%M"),  
+            "env_name": env.spec.id if env.spec else "Unknown",
+            "algorithm": algorithm.get_parameters()
+        }
+
         # Use defaultdicts to store lists of metrics per episode/step
-        self.episode_rewards = []
-        self.episode_lengths = []
+        self.episodes = []
         self.cumulative_rewards = [] # Optional: Cumulative reward over training
         self.algorithm_specific_metrics = defaultdict(list) # For things like TD error, policy change
 
-        self._current_episode_reward = 0
-        self._current_episode_length = 0
+        self.reset_episode_metrics()
 
     def reset_episode_metrics(self):
         """Resets metrics for a new episode."""
-        self._current_episode_reward = 0
-        self._current_episode_length = 0
+        self._current_episode = { 
+            "reward": 0,
+            "length": 0,
+            "replay": [],
+            "info": [],
+            "internal_state":{}  
+        } 
 
-    def record_step(self, reward: float, info: dict = None):
+    def record_step(self, reward: float, info: dict = None, frame=None):
         """Records metrics for a single step."""
-        self._current_episode_reward += reward
-        self._current_episode_length += 1
+        self._current_episode["reward"] += reward
+        self._current_episode["length"] += 1
+        self._current_episode["replay"].append(frame)
+
+        #self._current_episode["info"].append(info if info is not None else {})
         # You can record other step-specific info if needed from the 'info' dict
 
-    def record_episode_end(self, total_timesteps_so_far: int):
+    def record_episode_end(self, internal_state, is_training = True):
         """Records metrics at the end of an episode."""
-        self.episode_rewards.append(self._current_episode_reward)
-        self.episode_lengths.append(self._current_episode_length)
+        self._current_episode["is_training"] = is_training
+        self._current_episode["n"] = self.get_total_episodes() + 1
+        self._current_episode["internal_state"] = internal_state
+
+        self.episodes.append(deepcopy(self._current_episode))
+        
         # Calculate and record cumulative reward
         if not self.cumulative_rewards:
-            self.cumulative_rewards.append(self._current_episode_reward)
+            self.cumulative_rewards.append(self._current_episode["reward"])
         else:
-            self.cumulative_rewards.append(self.cumulative_rewards[-1] + self._current_episode_reward)
+            self.cumulative_rewards.append(self.cumulative_rewards[-1] + self._current_episode["reward"])
 
         self.reset_episode_metrics() # Prepare for the next episode
 
@@ -46,24 +65,24 @@ class TelemetryManager:
 
     def get_average_reward(self, window_size: int = 100) -> float:
         """Calculates the average reward over the last window_size episodes."""
-        if not self.episode_rewards:
+        if not self.episodes:
             return 0.0
-        return np.mean(self.episode_rewards[-window_size:])
+        return np.mean(self.episodes["reward"][-window_size:])
 
     def get_total_episodes(self) -> int:
         """Returns the total number of recorded episodes."""
-        return len(self.episode_rewards)
+        return len(self.episodes)
 
     def save_metrics(self, filename: str):
         """Saves collected metrics to a JSON file."""
         metrics_data = {
-            "episode_rewards": self.episode_rewards,
-            "episode_lengths": self.episode_lengths,
+            "metadata": self.metadata,
+            "episodes": self.episodes,  
             "cumulative_rewards": self.cumulative_rewards,
             "algorithm_specific_metrics": self.algorithm_specific_metrics
         }
         with open(filename, 'w') as f:
-            json.dump(metrics_data, f)
+            json.dump(metrics_data, f, indent=4)
         print(f"Metrics saved to {filename}")
 
     def load_metrics(self, filename: str):
@@ -71,9 +90,9 @@ class TelemetryManager:
         try:
             with open(filename, 'r') as f:
                 metrics_data = json.load(f)
-                self.episode_rewards = metrics_data.get("episode_rewards", [])
-                self.episode_lengths = metrics_data.get("episode_lengths", [])
-                self.cumulative_rewards = metrics_data.get("cumulative_rewards", [])
+                self.metadata = metrics_data.get("metadata", {}) 
+                self.episodes = metrics_data.get("episodes", [])
+                self.cumulative_rewards = metrics_data.get("cumulative_rewards",0) ,
                 self.algorithm_specific_metrics = defaultdict(list, metrics_data.get("algorithm_specific_metrics", {}))
             print(f"Metrics loaded from {filename}")
         except FileNotFoundError:
