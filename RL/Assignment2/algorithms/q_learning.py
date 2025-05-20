@@ -2,18 +2,16 @@
 import gymnasium as gym
 import numpy as np
 from collections import defaultdict
-import random
-# Assuming you have a policies.py in utils
-from utils.policies import epsilon_greedy_action
+from utils.strategy import Strategy
 from algorithms.base_algorithm import RLAlgorithm
 
 class QLearning(RLAlgorithm):
     """
     Q-Learning algorithm implementation.
     """
-    def __init__(self, env: gym.Env, gamma: float = 1.0, alpha: float = 0.1,
-                 initial_epsilon: float = 1.0, min_epsilon: float = 0.01,
-                 epsilon_decay_episodes: int = 1, **kwargs):
+    def __init__(self, env: gym.Env, strategy: Strategy,
+                 gamma: float = 1.0, alpha: float = 0.1,
+                  **kwargs):
         """
         Initializes the Q-Learning algorithm.
 
@@ -21,18 +19,11 @@ class QLearning(RLAlgorithm):
             env: The Gymnasium environment.
             gamma: Discount factor.
             alpha: Learning rate.
-            initial_epsilon: Starting value for epsilon in epsilon-greedy policy.
-            min_epsilon: Minimum value for epsilon.
-            epsilon_decay_episodes: The number of episodes over which epsilon decays from initial to min.
             **kwargs: Additional parameters for the base class.
         """
-        super().__init__(env, gamma, **kwargs)
+        super().__init__(env, strategy, gamma, **kwargs)
 
-        self.alpha = alpha
-        self.initial_epsilon = initial_epsilon
-        self.min_epsilon = min_epsilon
-        self.epsilon_decay_episodes = epsilon_decay_episodes
-
+        self.alpha = alpha 
 
         # Initialize Q-table
         self.q_table = defaultdict(lambda: np.zeros(self.n_actions))
@@ -44,29 +35,19 @@ class QLearning(RLAlgorithm):
         """
         Returns the parameters of the Q-Learning algorithm.
         """
-        return {
-            "algorithm": __class__.__name__,
-            "gamma": self.gamma,
-            "alpha": self.alpha,
-            "initial_epsilon": self.initial_epsilon,
-            "min_epsilon": self.min_epsilon,
-            "epsilon_decay_episodes": self.epsilon_decay_episodes
-        }
+        par = super().get_parameters()
+        par["alpha"] = self.alpha
+        return par
 
-    def choose_action(self, state: int) -> int:
-        """
-        Selects an action using an epsilon-greedy policy.
-        Epsilon decays over episodes managed by the main loop or internally.
-        """
-        # Calculate current epsilon based on episode count
-        decay_rate = (self.initial_epsilon - self.min_epsilon) / self.epsilon_decay_episodes if self.epsilon_decay_episodes > 0 else 0
-        epsilon = max(self.min_epsilon, self.initial_epsilon - decay_rate * self._current_episode)
+    def choose_action(self, state: int, episode) -> int: 
 
         # Use the helper function for action selection
-        return epsilon_greedy_action(self.q_table, state, epsilon, self.n_actions)
+        return self.strategy.action(self.q_table, state, episode)
 
 
-    def update(self, state: int, action: int, reward: float, next_state: int, terminated: bool, truncated: bool):
+    def update(self, state: int, action: int, 
+               reward: float, next_state: int, 
+               terminated: bool, truncated: bool):
          """
          Updates the Q-table based on the Q-Learning update rule.
          Called by the main training loop after each step.

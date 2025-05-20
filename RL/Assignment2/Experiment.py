@@ -17,7 +17,7 @@ class Experiment:
         self.telemetry = TelemetryManager(env, algorithm)
 
 
-    def run_episode(self):
+    def run_episode(self, i_episode):
         """
         Runs a single episode in the environment.
 
@@ -47,7 +47,7 @@ class Experiment:
             # Note: For evaluation, choose_action should ideally be purely greedy.
             # The QLearning class handles this internally based on episode count for epsilon decay.
             # For evaluation phase, ensure epsilon is effectively 0.
-            action = self.algorithm.choose_action(state) # choose_action now handles exploration strategy
+            action = self.algorithm.choose_action(state, i_episode) # choose_action now handles exploration strategy
 
             # Environment takes a step
             next_state, reward, terminated, truncated, info = self.env.step(action)
@@ -86,7 +86,7 @@ class Experiment:
         self.is_training = True # Set to True for training
         print(f"--- Starting Training for {type(self.algorithm).__name__} for {num_episodes} episodes ---")
         for i_episode in range(num_episodes):
-            self.run_episode() # No rendering during training usually
+            self.run_episode(i_episode) # No rendering during training usually
 
             # Optional: Print progress
             if (i_episode + 1) % 1000 == 0:
@@ -117,7 +117,7 @@ class Experiment:
 
 
         for i_episode in range(num_episodes):
-            total_reward = self.run_episode()
+            total_reward = self.run_episode(i_episode)
             episode_rewards.append(total_reward)
             print(f"  Evaluation Episode {i_episode + 1}: Total Reward = {total_reward}")
 

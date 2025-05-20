@@ -1,13 +1,14 @@
 # algorithms/base_algorithm.py
 import gymnasium as gym
 import numpy as np
+from utils.strategy import Strategy
 
 class RLAlgorithm:
     """
     Base class for reinforcement learning algorithms.
     Subclasses should implement the choose_action and update methods.
     """
-    def __init__(self, env: gym.Env, gamma: float = 1.0, **kwargs):
+    def __init__(self, env: gym.Env, strategy: Strategy, gamma: float = 1.0, **kwargs):
         """
         Initializes the base RL algorithm.
 
@@ -25,12 +26,23 @@ class RLAlgorithm:
         self.gamma = gamma
         self.n_states = env.observation_space.n
         self.n_actions = env.action_space.n
-
+        #strategy.n_actions = env.action_space.n
+        self.strategy = strategy
         self.params = kwargs
 
         # Algorithm-specific state (e.g., Q-table, Value table) will be initialized in subclasses
 
-    def choose_action(self, state: int) -> int:
+    def get_parameters(self) -> dict:
+        """
+        Returns the parameters of the algorithm.
+        """
+        return {
+            "algorithm": __class__.__name__,
+            "gamma": self.gamma,
+            "strategy": self.strategy
+        }
+
+    def choose_action(self, state: int, episode: int) -> int:
         """
         Selects an action based on the current policy or learned values.
         Must be implemented by subclasses that perform control.
