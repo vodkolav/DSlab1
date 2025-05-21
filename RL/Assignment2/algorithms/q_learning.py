@@ -3,7 +3,7 @@ import gymnasium as gym
 import numpy as np
 from collections import defaultdict
 from utils.strategy import Strategy
-from algorithms.base_algorithm import RLAlgorithm
+from algorithms.agent import RLAlgorithm
 
 class QLearning(RLAlgorithm):
     """

@@ -3,7 +3,7 @@ import gymnasium as gym
 import numpy as np
 from collections import defaultdict
 import random
-from algorithms.base_algorithm import RLAlgorithm
+from algorithms.agent import RLAlgorithm
 from utils.strategy import Strategy
 
 class SARSA(RLAlgorithm):

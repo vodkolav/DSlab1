@@ -1,4 +1,4 @@
-from algorithms.base_algorithm import RLAlgorithm
+from algorithms.agent import RLAlgorithm
 from telemetry.telemetry_manager import TelemetryManager
 
 
