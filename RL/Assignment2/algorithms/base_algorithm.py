@@ -57,6 +57,22 @@ class RLAlgorithm:
         # based on the algorithm's current state and possibly passed parameters (like epsilon)
         raise NotImplementedError("Subclass must implement abstract method")
 
+    def choose_greedy_action(self, state: int) -> int:
+        """
+        Selects the greedy action of the strategy.
+        For use in evaluation.
+        Must be implemented by subclasses that perform control.
+
+        Args:
+            state: The current state observation.
+
+        Returns:
+            The chosen action.
+        """
+        # This method will now handle exploration strategies like epsilon-greedy internally
+        # based on the algorithm's current state and possibly passed parameters (like epsilon)
+        raise NotImplementedError("Subclass must implement abstract method")
+
     def update(self, state, action, reward, next_state, terminated, truncated, **kwargs):
          """
          Updates the algorithm's state based on a single step of experience.

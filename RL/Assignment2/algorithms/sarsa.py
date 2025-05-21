@@ -30,34 +30,22 @@ class SARSA(RLAlgorithm):
 
         self.alpha = alpha
 
-        #n_actions = env.action_space.n
-        # Using defaultdict to handle states not yet visited
         self.q_table = defaultdict(lambda: np.zeros(self.n_actions))
 
-        #epsilon = initial_epsilon
-
-        # State to track epsilon decay
-        #self._current_episode = 0
-        #for i_episode in range(1, n_episodes + 1):
 
     def choose_action(self, state: int, episode: int) -> int:
-       
-      
         # Choose the first action using the epsilon-greedy policy
         return self.strategy.action(self.q_table, state , episode)
 
-       
-            # terminated = False
-            # truncated = False
 
-        #    while not terminated and not truncated:
+    def choose_greedy_action(self, state: int) -> int:
+        return self.strategy.greedy(self.q_table, state)
+
 
     def update(self, state: int, action: int, 
                reward: float, next_state: int, 
                terminated: bool, truncated: bool):
-       
-        #next_state, reward, terminated, truncated, _ = env.step(action)
-        
+               
         # Choose the next action using the epsilon-greedy policy
         next_action = self.strategy.epsilon_greedy(self.q_table, state)
 
@@ -96,38 +84,3 @@ class SARSA(RLAlgorithm):
              value_function[s] = np.max(self.q_table[s])
         return value_function
 
-
-
-
-        # # The final policy is typically the greedy policy based on the learned Q-values
-        # # Or you might return the epsilon-greedy policy if that's what you want to evaluate
-        # final_policy = epsilon_greedy_policy(self.q_table, 0, n_actions) # Greedy policy
-
-        # return self.q_table, final_policy
-
-
-    # if __name__ == '__main__':
-    #     # Example Usage:
-    #     env = gym.make("Taxi-v3") # Use render_mode='human' to visualize
-
-    #     print("Running SARSA...")
-    #     learned_Q_sarsa, learned_policy_sarsa = sarsa(env, n_episodes=50000) # You'll need a good number of episodes
-    #     print("SARSA Finished.")
-
-    #     # You can test the learned policy
-    #     print("\nTesting learned policy:")
-    #     state, _ = env.reset()
-    #     terminated = False
-    #     truncated = False
-    #     total_reward = 0
-    #     while not terminated and not truncated:
-    #         action = learned_policy_sarsa(state)
-    #         state, reward, terminated, truncated, _ = env.step(action)
-    #         total_reward += reward
-    #         # Optional: env.render() if render_mode='human' is set
-
-
-    #     print(f"Test episode finished with total reward: {total_reward}")
-
-
-    #     env.close()

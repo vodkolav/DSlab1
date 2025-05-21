@@ -9,6 +9,10 @@ import numpy as np
 class Experiment:
     """
     Class to manage the RL experiment, including training and evaluation.
+
+        Args:
+            env: The Gymnasium environment.
+            algorithm: The RLAlgorithm instance.
     """
     def __init__(self, env: gym.Env, algorithm: RLAlgorithm):
         self.env = env
@@ -21,15 +25,11 @@ class Experiment:
         """
         Runs a single episode in the environment.
 
-        Args:
-            env: The Gymnasium environment.
-            algorithm: The RLAlgorithm instance.
-            is_training: True if in training mode (call algorithm.update), False for evaluation.
-            telemetry: Optional TelemetryManager for recording metrics.
-            render: Whether to render the environment.
+            Args:
+                i_episode: episode number
 
-        Returns:
-            The total reward for the episode.
+            Returns:
+                The total reward for the episode.
         """
         state, info = self.env.reset()
         terminated = False
@@ -47,7 +47,13 @@ class Experiment:
             # Note: For evaluation, choose_action should ideally be purely greedy.
             # The QLearning class handles this internally based on episode count for epsilon decay.
             # For evaluation phase, ensure epsilon is effectively 0.
-            action = self.algorithm.choose_action(state, i_episode) # choose_action now handles exploration strategy
+            if self.is_training:
+                action = self.algorithm.choose_action(state, i_episode) # choose_action now handles exploration strategy
+            else: 
+                action = self.algorithm.choose_greedy_action(state)
+
+            if action is None:
+                print("wtf")
 
             # Environment takes a step
             next_state, reward, terminated, truncated, info = self.env.step(action)
@@ -78,10 +84,7 @@ class Experiment:
         Runs the training loop for an episode-based algorithm.
 
         Args:
-            algorithm: The RLAlgorithm instance to train.
-            env: The Gymnasium environment.
-            total_episodes: Total number of episodes for training.
-            telemetry: Optional TelemetryManager for recording metrics.
+            num_episodes: Total number of episodes for training.
         """
         self.is_training = True # Set to True for training
         print(f"--- Starting Training for {type(self.algorithm).__name__} for {num_episodes} episodes ---")
@@ -101,29 +104,17 @@ class Experiment:
         Evaluates the learned policy of an algorithm.
 
         Args:
-            algorithm: The RLAlgorithm instance to evaluate.
-            env: The Gymnasium environment.
             num_episodes: Number of evaluation episodes.
-            render: Whether to render the environment during evaluation.
         """
         self.is_training = False # Set to False for evaluation
         print(f"\n--- Running Evaluation for {type(self.algorithm).__name__} over {num_episodes} episodes ---")
 
         episode_rewards = []
-        # Temporarily set epsilon to 0 for greedy evaluation if the algorithm uses it internally
-        original_epsilon = getattr(self.algorithm, '_current_epsilon', None)
-        if original_epsilon is not None:
-            setattr(self.algorithm, '_current_epsilon', 0.0) # Force greedy during evaluation
-
 
         for i_episode in range(num_episodes):
             total_reward = self.run_episode(i_episode)
             episode_rewards.append(total_reward)
             print(f"  Evaluation Episode {i_episode + 1}: Total Reward = {total_reward}")
-
-        # Restore original epsilon after evaluation
-        if original_epsilon is not None:
-            setattr(self.algorithm, '_current_epsilon', original_epsilon)
 
         avg_reward = np.mean(episode_rewards)
         print(f"Average Evaluation Reward over {num_episodes} episodes: {avg_reward:.2f}")

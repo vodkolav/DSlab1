@@ -40,10 +40,12 @@ class QLearning(RLAlgorithm):
         return par
 
     def choose_action(self, state: int, episode) -> int: 
-
+        action = self.strategy.action(self.q_table, state, episode)
         # Use the helper function for action selection
-        return self.strategy.action(self.q_table, state, episode)
+        return action
 
+    def choose_greedy_action(self, state: int) -> int:
+        return self.strategy.greedy(self.q_table, state)
 
     def update(self, state: int, action: int, 
                reward: float, next_state: int, 
@@ -83,5 +85,3 @@ class QLearning(RLAlgorithm):
         for s in range(self.n_states):
              value_function[s] = np.max(self.q_table[s])
         return value_function
-
-    # ... save and load methods
