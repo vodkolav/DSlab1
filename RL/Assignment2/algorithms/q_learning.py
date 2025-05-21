@@ -3,9 +3,9 @@ import gymnasium as gym
 import numpy as np
 from collections import defaultdict
 from utils.strategy import Strategy
-from algorithms.agent import RLAlgorithm
+from algorithms.agent import RLAgent
 
-class QLearning(RLAlgorithm):
+class QLearning(RLAgent):
     """
     Q-Learning algorithm implementation.
     """

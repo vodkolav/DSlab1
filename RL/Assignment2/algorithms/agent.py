@@ -3,7 +3,7 @@ import gymnasium as gym
 import numpy as np
 from utils.strategy import Strategy
 
-class RLAlgorithm:
+class RLAgent:
     """
     Base class for reinforcement learning algorithms.
     Subclasses should implement the choose_action and update methods.

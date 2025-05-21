@@ -1,4 +1,4 @@
-from algorithms.agent import RLAlgorithm
+from algorithms.agent import RLAgent
 from telemetry.telemetry_manager import TelemetryManager
 
 
@@ -14,7 +14,7 @@ class Experiment:
             env: The Gymnasium environment.
             algorithm: The RLAlgorithm instance.
     """
-    def __init__(self, env: gym.Env, algorithm: RLAlgorithm):
+    def __init__(self, env: gym.Env, algorithm: RLAgent):
         self.env = env
         self.algorithm = algorithm
         # Create Telemetry Manager
