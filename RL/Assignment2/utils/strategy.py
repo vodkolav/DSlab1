@@ -45,6 +45,8 @@ class Strategy:
             # If state is neither, return random
             return random.randint(0, self.n_actions - 1)
 
+    def random(self):
+        return random.randint(0, self.n_actions - 1)
 
     def greedy(self, Q: defaultdict, state: int) -> int:
         """
@@ -65,10 +67,10 @@ class Strategy:
         else:
             # If state is not in Q or all Q values are 0, explore
             return random.randint(0, self.n_actions - 1)
-        
+
 
     def epsilon_greedy(self, Q: defaultdict, 
-                              state: int) -> int:
+                             state: int) -> int:
         """
         Selects an action for a given state using an epsilon-greedy strategy.
 
@@ -83,7 +85,7 @@ class Strategy:
         """
         if random.random() < self.epsilon:
             # Explore: Choose a random action
-            return random.randint(0, self.n_actions - 1)
+            return self.random()
         else:
             # Exploit: Choose the action with the highest Q-value for the state
             return self.greedy(Q, state)

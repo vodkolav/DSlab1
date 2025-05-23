@@ -47,7 +47,7 @@ class TelemetryManager:
         """Records metrics at the end of an episode."""
         self._current_episode["is_training"] = is_training
         self._current_episode["n"] = self.get_total_episodes() + 1
-        self._current_episode["internal_state"] = internal_state
+        self._current_episode["internal_state"] = dict(internal_state)
 
         self.episodes.append(deepcopy(self._current_episode))
         

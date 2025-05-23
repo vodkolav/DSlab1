@@ -39,7 +39,7 @@ class RLAgent:
         return {
             "algorithm": __class__.__name__,
             "gamma": self.gamma,
-            "strategy": self.strategy
+            "strategy": self.strategy.get_parameters()
         }
 
     def choose_action(self, state: int, episode: int) -> int:
