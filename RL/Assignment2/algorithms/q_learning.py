@@ -3,6 +3,7 @@ import gymnasium as gym
 import numpy as np
 from collections import defaultdict
 from algorithms.agent import RLAgent
+from algorithms.eligibility_traces import EligibilityTraces
 from utils.strategy import Strategy
 
 class QLearning(RLAgent):
@@ -11,7 +12,7 @@ class QLearning(RLAgent):
     """
     def __init__(self, env: gym.Env, strategy: Strategy,
                  gamma: float = 1.0, alpha: float = 0.1,
-                  **kwargs):
+                 lambda_: float = 0.0,  **kwargs):
         """
         Initializes the Q-Learning algorithm.
 
@@ -27,7 +28,7 @@ class QLearning(RLAgent):
         self.alpha = alpha 
         # Initialize Q-table
         self.q_table = defaultdict(lambda: np.zeros(self.n_actions))
-
+        self.ET = EligibilityTraces(self, lambda_) 
 
     def choose_action(self, state: int, episode: int) -> int:
         return self.strategy.action(self.q_table, state, episode)
@@ -40,18 +41,23 @@ class QLearning(RLAgent):
     def update(self, state: int, action: int, 
                reward: float, next_state: int, 
                terminated: bool, truncated: bool):
-         """
-         Updates the Q-table based on the Q-Learning update rule.
-         Called by the main training loop after each step.
-         """
-         # Q-Learning Update Rule: 
-         # Q(s, a) = Q(s, a) + alpha * [reward + gamma * max_a' Q(s', a') - Q(s, a)]
-         # Note: Q-Learning is off-policy, so we use the max Q value in the next state
-         
-         max_next_q = np.max(self.q_table[next_state])
-         td_target = reward + self.gamma * max_next_q * (1 - terminated) # If terminated, gamma * max_next_q is 0
-         td_error = td_target - self.q_table[state][action]
-         self.q_table[state][action] = self.q_table[state][action] + self.alpha * td_error
+        """
+        Updates the Q-table based on the Q-Learning update rule.
+        Called by the main training loop after each step.
+        """
+        # Q-Learning Update Rule: 
+        # Q(s, a) = Q(s, a) + alpha * [reward + gamma * max_a' Q(s', a') - Q(s, a)]
+        # Note: Q-Learning is off-policy, so we use the max Q value in the next state
+        
+        max_next_q = np.max(self.q_table[next_state])
+        td_target = reward + self.gamma * max_next_q * (1 - terminated) # If terminated, gamma * max_next_q is 0
+        td_error = td_target - self.q_table[state][action]
+
+        if self.ET.enabled:            
+            self.ET.update(state, action, td_error)
+        else:
+            # If no eligibility traces, just update the Q-table directly
+            self.q_table[state][action] = self.q_table[state][action] + self.alpha * td_error
 
 
     def get_parameters(self) -> dict:

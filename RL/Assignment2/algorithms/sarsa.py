@@ -3,6 +3,7 @@ import gymnasium as gym
 import numpy as np
 from collections import defaultdict
 from algorithms.agent import RLAgent
+from algorithms.eligibility_traces import EligibilityTraces
 from utils.strategy import Strategy
 
 class SARSA(RLAgent):
@@ -11,7 +12,7 @@ class SARSA(RLAgent):
     """
     def __init__(self, env: gym.Env, strategy: Strategy,
                  gamma: float = 1.0, alpha: float = 0.1,
-                   **kwargs):
+                 lambda_: float = 0.0,  **kwargs):
         """
         Initializes the SARSA algorithm.
 
@@ -27,7 +28,7 @@ class SARSA(RLAgent):
         self.alpha = alpha
         # Initialize Q-table
         self.q_table = defaultdict(lambda: np.zeros(self.n_actions))
-
+        self.ET = EligibilityTraces(self, lambda_) 
 
     def choose_action(self, state: int, episode: int) -> int:
         return self.strategy.action(self.q_table, state, episode)
@@ -52,7 +53,12 @@ class SARSA(RLAgent):
         next_action = self.strategy.epsilon_greedy(self.q_table, state)
         td_target = reward + self.gamma * self.q_table[next_state][next_action] * (1 - terminated) # If terminated, gamma * Q(s',a') is 0
         td_error = td_target - self.q_table[state][action]
-        self.q_table[state][action] = self.q_table[state][action] + self.alpha * td_error
+        
+        if self.ET.enabled:            
+            self.ET.update(state, action, td_error)
+        else:
+            # If no eligibility traces, just update the Q-table directly
+            self.q_table[state][action] = self.q_table[state][action] + self.alpha * td_error
 
 
     def get_parameters(self) -> dict:
