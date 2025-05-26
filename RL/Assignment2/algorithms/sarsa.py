@@ -2,40 +2,35 @@
 import gymnasium as gym
 import numpy as np
 from collections import defaultdict
-import random
 from algorithms.agent import RLAgent
 from utils.strategy import Strategy
 
 class SARSA(RLAgent):
-
-    def __init__(self,  env: gym.Env, strategy: Strategy,
-                 gamma: float = 1.0, alpha: float = 0.1, **kwargs):
+    """
+    SARSA algorithm implementation.
+    """
+    def __init__(self, env: gym.Env, strategy: Strategy,
+                 gamma: float = 1.0, alpha: float = 0.1,
+                   **kwargs):
         """
-        Performs SARSA to find the optimal action-value function.
+        Initializes the SARSA algorithm.
 
         Args:
             env: The Gymnasium environment.
-            alpha: Learning rate.
             gamma: Discount factor.
-            initial_epsilon: Starting value for epsilon in epsilon-greedy policy.
-            min_epsilon: Minimum value for epsilon.
-            epsilon_decay_ratio: Decay rate for epsilon per episode.
-
-        Returns:
-            Q: The learned action-value function (defaultdict).
-            policy: The learned epsilon-greedy policy (function).
+            alpha: Learning rate.
+            **kwargs: Additional parameters for the base class.
         """
 
         super().__init__(env, strategy, gamma, **kwargs)
 
         self.alpha = alpha
-
+        # Initialize Q-table
         self.q_table = defaultdict(lambda: np.zeros(self.n_actions))
 
 
     def choose_action(self, state: int, episode: int) -> int:
-        # Choose the first action using the epsilon-greedy policy
-        return self.strategy.action(self.q_table, state , episode)
+        return self.strategy.action(self.q_table, state, episode)
 
 
     def choose_greedy_action(self, state: int) -> int:
@@ -45,15 +40,20 @@ class SARSA(RLAgent):
     def update(self, state: int, action: int, 
                reward: float, next_state: int, 
                terminated: bool, truncated: bool):
-               
-        # Choose the next action using the epsilon-greedy policy
-        next_action = self.strategy.epsilon_greedy(self.q_table, state)
-
-        # SARSA Update Rule: Q(s, a) = Q(s, a) + alpha * [reward + gamma * Q(s', a') - Q(s, a)]
+        """
+        Updates the Q-table based on the SARSA update rule.
+        Called by the main training loop after each step.
+        """
+        # SARSA Update Rule: 
+        # Q(s, a) = Q(s, a) + alpha * [reward + gamma * Q(s', a') - Q(s, a)]
         # Note: SARSA is on-policy, so we use the Q value of the *next action taken*
+        # Choose the next action using the epsilon-greedy policy
+
+        next_action = self.strategy.epsilon_greedy(self.q_table, state)
         td_target = reward + self.gamma * self.q_table[next_state][next_action] * (1 - terminated) # If terminated, gamma * Q(s',a') is 0
         td_error = td_target - self.q_table[state][action]
         self.q_table[state][action] = self.q_table[state][action] + self.alpha * td_error
+
 
     def get_parameters(self) -> dict:
         """
