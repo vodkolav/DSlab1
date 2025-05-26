@@ -76,7 +76,7 @@ class Experiment:
         if self.telemetry:
             self.telemetry.record_episode_end(self.algorithm.get_intestines(), self.is_training ) # Record episode number
 
-        return total_reward
+        return self.algorithm.terminate_prematurely
 
 
     def train_algorithm(self, num_episodes: int):
@@ -89,8 +89,11 @@ class Experiment:
         self.is_training = True # Set to True for training
         print(f"--- Starting Training for {type(self.algorithm).__name__} for {num_episodes} episodes ---")
         for i_episode in range(num_episodes):
+            print("episode:", i_episode)
             self.run_episode(i_episode) # No rendering during training usually
-
+            if self.algorithm.terminate_prematurely:
+                print("Training finished. Algorithm decided to terminate prematurely.")
+                break
             # Optional: Print progress
             if (i_episode + 1) % 1000 == 0:
                 avg_reward = self.telemetry.get_average_reward() if self.telemetry else "N/A"

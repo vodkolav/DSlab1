@@ -29,7 +29,8 @@ class RLAgent:
         #strategy.n_actions = env.action_space.n
         self.strategy = strategy
         self.params = kwargs
-
+        self.terminate_prematurely = False
+        
         # Algorithm-specific state (e.g., Q-table, Value table) will be initialized in subclasses
 
     def get_parameters(self) -> dict:
