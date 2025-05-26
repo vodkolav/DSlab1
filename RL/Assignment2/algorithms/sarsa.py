@@ -57,7 +57,7 @@ class SARSA(RLAgent):
 
     def get_parameters(self) -> dict:
         """
-        Returns the parameters of the Sarsa algorithm.
+        Returns the parameters of the algorithm.
         """
         par = super().get_parameters()
         par["alpha"] = self.alpha
