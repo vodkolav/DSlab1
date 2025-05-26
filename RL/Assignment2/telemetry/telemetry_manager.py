@@ -19,7 +19,6 @@ class TelemetryManager:
 
         # Use defaultdicts to store lists of metrics per episode/step
         self.episodes = []
-        self.cumulative_rewards = [] # Optional: Cumulative reward over training
         self.algorithm_specific_metrics = defaultdict(list) # For things like TD error, policy change
 
         self.reset_episode_metrics()
@@ -31,7 +30,8 @@ class TelemetryManager:
             "length": 0,
             "replay": [],
             "info": [],
-            "internal_state":{}  
+            "internal_state":{},  
+            "n": self.get_total_episodes() + 1
         } 
 
     def record_step(self, reward: float, info: dict = None, frame=None):
@@ -40,22 +40,17 @@ class TelemetryManager:
         self._current_episode["length"] += 1
         self._current_episode["replay"].append(frame)
 
-        #self._current_episode["info"].append(info if info is not None else {})
+        self._current_episode["info"].append(info if info is not None else {})
         # You can record other step-specific info if needed from the 'info' dict
 
     def record_episode_end(self, internal_state, is_training = True):
         """Records metrics at the end of an episode."""
         self._current_episode["is_training"] = is_training
-        self._current_episode["n"] = self.get_total_episodes() + 1
+
         self._current_episode["internal_state"] = dict(internal_state)
 
         self.episodes.append(deepcopy(self._current_episode))
         
-        # Calculate and record cumulative reward
-        if not self.cumulative_rewards:
-            self.cumulative_rewards.append(self._current_episode["reward"])
-        else:
-            self.cumulative_rewards.append(self.cumulative_rewards[-1] + self._current_episode["reward"])
 
         self.reset_episode_metrics() # Prepare for the next episode
 
@@ -63,11 +58,31 @@ class TelemetryManager:
         """Records algorithm-specific metrics (e.g., delta in Value Iteration)."""
         self.algorithm_specific_metrics[metric_name].append(value)
 
+    def report_start(self, is_training, num_episodes):
+        self.total_episodes = num_episodes
+        self.mode = "Training" if is_training else "Evaluating"
+        print(f"{self.mode} {self.metadata['algorithm']['algorithm']} over {self.total_episodes} episodes")
+
+
+    def report_progress(self):
+        # Optional: Print progress
+        freq = 10  # Frequency of reporting progress
+        i_episode = self._current_episode["n"]
+        if (i_episode + 1) % freq == 0:
+            avg_reward = self.get_average_reward()
+            print(f"\r {self.mode} Episode {i_episode + 1}/{self.total_episodes}, Avg Reward (last 100): {avg_reward:.2f}", end='')
+
+
+    def report_end(self):
+        # Optional: Print end message
+        print(f"\n{self.mode} ended. Total episodes recorded: {len(self.episodes)}")
+
+
     def get_average_reward(self, window_size: int = 100) -> float:
         """Calculates the average reward over the last window_size episodes."""
         if not self.episodes:
             return 0.0
-        return np.mean(self.episodes["reward"][-window_size:])
+        return np.mean([ep["reward"] for ep in self.episodes[-window_size:]])
 
     def get_total_episodes(self) -> int:
         """Returns the total number of recorded episodes."""
@@ -78,7 +93,6 @@ class TelemetryManager:
         metrics_data = {
             "metadata": self.metadata,
             "episodes": self.episodes,  
-            "cumulative_rewards": self.cumulative_rewards,
             "algorithm_specific_metrics": self.algorithm_specific_metrics
         }
         with open(filename, 'w') as f:
@@ -92,7 +106,6 @@ class TelemetryManager:
                 metrics_data = json.load(f)
                 self.metadata = metrics_data.get("metadata", {}) 
                 self.episodes = metrics_data.get("episodes", [])
-                self.cumulative_rewards = metrics_data.get("cumulative_rewards",0) ,
                 self.algorithm_specific_metrics = defaultdict(list, metrics_data.get("algorithm_specific_metrics", {}))
             print(f"Metrics loaded from {filename}")
         except FileNotFoundError:

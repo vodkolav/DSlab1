@@ -87,19 +87,16 @@ class Experiment:
             num_episodes: Total number of episodes for training.
         """
         self.is_training = True # Set to True for training
-        print(f"--- Starting Training for {type(self.algorithm).__name__} for {num_episodes} episodes ---")
+        self.telemetry.report_start(self.is_training, num_episodes) # Start telemetry reporting
         for i_episode in range(num_episodes):
-            print("episode:", i_episode)
+
             self.run_episode(i_episode) # No rendering during training usually
             if self.algorithm.terminate_prematurely:
-                print("Training finished. Algorithm decided to terminate prematurely.")
+                print("Algorithm decided to terminate prematurely.")
                 break
-            # Optional: Print progress
-            if (i_episode + 1) % 1000 == 0:
-                avg_reward = self.telemetry.get_average_reward() if self.telemetry else "N/A"
-                print(f"Episode {i_episode + 1}/{num_episodes}, Avg Reward (last 100): {avg_reward:.2f}")
+            self.telemetry.report_progress()    
 
-        print("Training finished.")
+        self.telemetry.report_end() # End telemetry reporting
 
 
     def evaluate_algorithm(self, num_episodes: int = 10):
@@ -110,18 +107,14 @@ class Experiment:
             num_episodes: Number of evaluation episodes.
         """
         self.is_training = False # Set to False for evaluation
-        print(f"\n--- Running Evaluation for {type(self.algorithm).__name__} over {num_episodes} episodes ---")
-
-        episode_rewards = []
+        
+        self.telemetry.report_start(self.is_training, num_episodes)
 
         for i_episode in range(num_episodes):
-            total_reward = self.run_episode(i_episode)
-            episode_rewards.append(total_reward)
-            print(f"  Evaluation Episode {i_episode + 1}: Total Reward = {total_reward}")
+            self.run_episode(i_episode)
+            self.telemetry.report_progress()
 
-        avg_reward = np.mean(episode_rewards)
-        print(f"Average Evaluation Reward over {num_episodes} episodes: {avg_reward:.2f}")
-        print("Evaluation finished.")
+        self.telemetry.report_end()
 
 
     # --- Special Handling for Dynamic Programming ---
@@ -139,6 +132,8 @@ class Experiment:
     def run_experiment(self,train_episodes, eval_episodes, render = False):
 
         self.render = render
+
+        self.telemetry.total_episodes = train_episodes + eval_episodes
 
         self.train_algorithm(train_episodes)
 

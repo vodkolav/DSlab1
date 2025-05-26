@@ -38,7 +38,7 @@ class RLAgent:
         Returns the parameters of the algorithm.
         """
         return {
-            "algorithm": __class__.__name__,
+            "algorithm": self.__class__.__name__,
             "gamma": self.gamma,
             "strategy": self.strategy.get_parameters()
         }
