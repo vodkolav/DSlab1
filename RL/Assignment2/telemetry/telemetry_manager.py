@@ -3,8 +3,25 @@ from collections import defaultdict
 import numpy as np
 import json
 from datetime import datetime
+import time
+import psutil
+import os
 from copy import deepcopy
 
+
+class NumpyEncoder(json.JSONEncoder):
+    """ Special json encoder for numpy types 
+        taken from https://stackoverflow.com/a/49677241/7097017
+    """
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return json.JSONEncoder.default(self, obj)
+    
 class TelemetryManager:
     """
     Manages the collection of training and evaluation metrics.
@@ -14,12 +31,13 @@ class TelemetryManager:
         self.metadata = {
             "start_time": datetime.now().strftime(r"%y.%m.%d-%H.%M"),  
             "env_name": env.spec.id if env.spec else "Unknown",
-            "algorithm": algorithm.get_parameters()
+            "algorithm": algorithm.get_parameters(),
+            "rss_mb": self.get_memory_usage_mb()
         }
 
         # Use defaultdicts to store lists of metrics per episode/step
         self.episodes = []
-        self.algorithm_specific_metrics = defaultdict(list) # For things like TD error, policy change
+        #self.algorithm_specific_metrics = dict(list) # For things like TD error, policy change
 
         self.reset_episode_metrics()
 
@@ -31,32 +49,33 @@ class TelemetryManager:
             "replay": [],
             "info": [],
             "internal_state":{},  
-            "n": self.get_total_episodes() + 1
+            "n": self.get_total_episodes() + 1,
+            "start": time.time()
         } 
 
     def record_step(self, reward: float, info: dict = None, frame=None):
         """Records metrics for a single step."""
         self._current_episode["reward"] += reward
         self._current_episode["length"] += 1
-        self._current_episode["replay"].append(frame)
+        #self._current_episode["replay"].append(frame)
 
-        self._current_episode["info"].append(info if info is not None else {})
+        #self._current_episode["info"].append(info if info is not None else {})
         # You can record other step-specific info if needed from the 'info' dict
 
-    def record_episode_end(self, internal_state, is_training = True):
+    def record_episode_end(self, agent , is_training = True):
         """Records metrics at the end of an episode."""
         self._current_episode["is_training"] = is_training
 
-        self._current_episode["internal_state"] = dict(internal_state)
+        self._current_episode["end"] = time.time()
+
+        self._current_episode["internal_state"] = dict(agent.get_intestines())
+
+        self._current_episode["rss_mb"] = self.get_memory_usage_mb()
 
         self.episodes.append(deepcopy(self._current_episode))
-        
 
         self.reset_episode_metrics() # Prepare for the next episode
 
-    def record_algorithm_metric(self, metric_name: str, value):
-        """Records algorithm-specific metrics (e.g., delta in Value Iteration)."""
-        self.algorithm_specific_metrics[metric_name].append(value)
 
     def report_start(self, is_training, num_episodes):
         self.total_episodes = num_episodes
@@ -78,6 +97,15 @@ class TelemetryManager:
         print(f"\n{self.mode} ended. Total episodes recorded: {len(self.episodes)}")
 
 
+    def get_memory_usage_mb(self):
+        """
+        Returns the current process's resident set size (RSS) memory usage in MB using psutil.
+        Works cross-platform.
+        """
+        process = psutil.Process(os.getpid())
+        return process.memory_info().rss / (1024 * 1024) # RSS in bytes
+    
+
     def get_average_reward(self, window_size: int = 100) -> float:
         """Calculates the average reward over the last window_size episodes."""
         if not self.episodes:
@@ -93,10 +121,9 @@ class TelemetryManager:
         metrics_data = {
             "metadata": self.metadata,
             "episodes": self.episodes,  
-            "algorithm_specific_metrics": self.algorithm_specific_metrics
         }
         with open(filename, 'w') as f:
-            json.dump(metrics_data, f, indent=4)
+            json.dump(metrics_data, f, indent=4, cls=NumpyEncoder)
         print(f"Metrics saved to {filename}")
 
     def load_metrics(self, filename: str):
@@ -106,7 +133,6 @@ class TelemetryManager:
                 metrics_data = json.load(f)
                 self.metadata = metrics_data.get("metadata", {}) 
                 self.episodes = metrics_data.get("episodes", [])
-                self.algorithm_specific_metrics = defaultdict(list, metrics_data.get("algorithm_specific_metrics", {}))
             print(f"Metrics loaded from {filename}")
         except FileNotFoundError:
             print(f"Error: Metrics file not found at {filename}")

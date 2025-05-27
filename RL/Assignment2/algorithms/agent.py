@@ -93,6 +93,13 @@ class RLAgent:
 
     # Keep optional methods like get_policy, get_value_function, save, load
 
+    def get_intestines(self):
+        """
+        Returns the internal state of the algorithm (e.g., Q-table, Value table).
+        Optional method, implementation depends on the algorithm.
+        """
+        raise NotImplementedError("Subclass must implement abstract method")
+
     def get_policy(self):
         """
         Returns the learned policy (e.g., as a numpy array or function).
