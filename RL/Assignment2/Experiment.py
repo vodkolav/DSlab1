@@ -35,12 +35,10 @@ class Experiment:
         terminated = False
         truncated = False
         total_reward = 0
+        frame = []
 
-        if self.telemetry and self.is_training:
-            self.telemetry.reset_episode_metrics()
-
-        if self.render:
-            frame = self.env.render()
+        if self.telemetry :
+            self.telemetry.reset_episode_metrics(i_episode)
 
         while not terminated and not truncated:
             # Algorithm chooses an action
@@ -67,8 +65,8 @@ class Experiment:
             state = next_state # Move to the next state
                 
             if self.telemetry:
-                #if self.render:
-                frame = self.env.render()    
+                if self.render:
+                    frame = self.env.render()  
 
                 self.telemetry.record_step(reward, info, frame)
 
@@ -91,10 +89,10 @@ class Experiment:
         for i_episode in range(num_episodes):
 
             self.run_episode(i_episode) # No rendering during training usually
+            self.telemetry.report_progress()
             if self.algorithm.terminate_prematurely:
                 print("Algorithm decided to terminate prematurely.")
                 break
-            self.telemetry.report_progress()    
 
         self.telemetry.report_end() # End telemetry reporting
 
@@ -111,6 +109,7 @@ class Experiment:
         self.telemetry.report_start(self.is_training, num_episodes)
 
         for i_episode in range(num_episodes):
+
             self.run_episode(i_episode)
             self.telemetry.report_progress()
 
@@ -133,7 +132,6 @@ class Experiment:
 
         self.render = render
 
-        self.telemetry.total_episodes = train_episodes + eval_episodes
 
         self.train_algorithm(train_episodes)
 

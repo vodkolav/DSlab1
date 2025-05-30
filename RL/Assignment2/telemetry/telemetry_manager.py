@@ -34,22 +34,42 @@ class TelemetryManager:
             "algorithm": algorithm.get_parameters(),
             "rss_mb": self.get_memory_usage_mb()
         }
+    
+        self.tot_episodes = 0
+        self.samplePoints = list(range(100))
 
         # Use defaultdicts to store lists of metrics per episode/step
         self.episodes = []
         #self.algorithm_specific_metrics = dict(list) # For things like TD error, policy change
 
-        self.reset_episode_metrics()
+        self.reset_episode_metrics(0)
 
-    def reset_episode_metrics(self):
+    @property
+    def total_episodes(self):
+        return self.tot_episodes
+
+    @total_episodes.setter
+    def total_episodes(self, value):
+        limit = 100
+        if value < limit:
+            limit = value
+        
+        self.samplePoints = np.int64(np.linspace(0,value, limit))
+        invl = np.round(value/limit, decimals=2)
+        print("tracking and reporting once every", invl, "episodes")
+        self.tot_episodes = value
+
+
+    def reset_episode_metrics(self, i_episode):
         """Resets metrics for a new episode."""
+        self.i_episode = i_episode
         self._current_episode = { 
             "reward": 0,
             "length": 0,
             "replay": [],
             "info": [],
             "internal_state":{},  
-            "n": self.get_total_episodes() + 1,
+            "i": i_episode, 
             "start": time.time()
         } 
 
@@ -64,32 +84,31 @@ class TelemetryManager:
 
     def record_episode_end(self, agent , is_training = True):
         """Records metrics at the end of an episode."""
-        self._current_episode["is_training"] = is_training
+        if self.i_episode in self.samplePoints:
 
-        self._current_episode["end"] = time.time()
+            self._current_episode["is_training"] = is_training
 
-        self._current_episode["internal_state"] = dict(agent.get_intestines())
+            self._current_episode["end"] = time.time()
 
-        self._current_episode["rss_mb"] = self.get_memory_usage_mb()
+            self._current_episode["internal_state"] = dict(agent.get_intestines())
 
-        self.episodes.append(deepcopy(self._current_episode))
+            self._current_episode["rss_mb"] = self.get_memory_usage_mb()
 
-        self.reset_episode_metrics() # Prepare for the next episode
+            self.episodes.append(deepcopy(self._current_episode))
+
 
 
     def report_start(self, is_training, num_episodes):
         self.total_episodes = num_episodes
         self.mode = "Training" if is_training else "Evaluating"
-        print(f"{self.mode} {self.metadata['algorithm']['algorithm']} over {self.total_episodes} episodes")
+        print(f"{self.mode} {self.metadata['algorithm']['algorithm']} over {num_episodes} episodes")
 
 
     def report_progress(self):
-        # Optional: Print progress
-        freq = 10  # Frequency of reporting progress
-        i_episode = self._current_episode["n"]
-        if (i_episode + 1) % freq == 0:
+        # Optional: Print progress        
+        if self.i_episode in self.samplePoints:
             avg_reward = self.get_average_reward()
-            print(f"\r {self.mode} Episode {i_episode + 1}/{self.total_episodes}, Avg Reward (last 100): {avg_reward:.2f}", end='')
+            print(f"\r {self.mode} Episode {self.i_episode}/{self.total_episodes}, Avg Reward (last 100): {avg_reward:.2f}", end='')
 
 
     def report_end(self):
@@ -111,10 +130,6 @@ class TelemetryManager:
         if not self.episodes:
             return 0.0
         return np.mean([ep["reward"] for ep in self.episodes[-window_size:]])
-
-    def get_total_episodes(self) -> int:
-        """Returns the total number of recorded episodes."""
-        return len(self.episodes)
 
     def save_metrics(self, filename: str):
         """Saves collected metrics to a JSON file."""
