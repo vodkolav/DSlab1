@@ -5,10 +5,12 @@ import os
 import datetime
 import json
 
-import json
 import multiprocessing
 import os
-import time
+
+from pathlib import Path
+import pandas as pd 
+
 
 # Import your classes
 
@@ -80,8 +82,7 @@ def run_case(exp_config: dict, output_dir = "data/results") -> dict:
     # --- Run Experiment ---
     # The run_experiment method from your Experiment class
     # You might want to return a summary directly or save it.
-    # For parallel runs, it's best to save telemetry to a unique file.
-    run_timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+    # For parallel runs, it's best to save telemetry to a unique file.    
     
     os.makedirs(output_dir, exist_ok=True)
 
@@ -99,15 +100,39 @@ def run_case(exp_config: dict, output_dir = "data/results") -> dict:
     # with open(config_filepath, 'w') as f:
     #     json.dump(exp_config, f, indent=4)
 
-    telemetry_filepath = os.path.join(output_dir, f"{run_timestamp}_{os.getpid()}.json")
+
+    run_timestamp = exper.telemetry.metadata["start_time"] 
+    pid = exper.telemetry.metadata["pid"]
+
+    fname =  f"{run_timestamp}_{pid}.json"
+
+    telemetry_filepath = os.path.join(output_dir, fname)
     exper.telemetry.save_metrics(telemetry_filepath) # Save the telemetry
 
     env.close()
 
-    print(f"[{os.getpid()}] Finished experiment: {run_timestamp}")
-    return exper
+    result = {"status": "done", "pid": str(pid), "timestamp":run_timestamp, "telemetry_filepath": telemetry_filepath}
 
-def run_battery_of_experiments(config_filepath: str, num_cores: int = None):
+    return result
+
+
+def read_configs(config_filepath):
+    try:
+        with open(config_filepath, 'r') as f:
+            experiment_configs = json.load(f)
+    except FileNotFoundError:
+        print(f"Error: Configuration file not found at {config_filepath}")
+        return
+    except json.JSONDecodeError:
+        print(f"Error: Invalid JSON in {config_filepath}")
+        return
+
+    print(f"Loaded {len(experiment_configs)} experiments from {config_filepath}")
+    return experiment_configs
+
+
+
+def run_battery_of_experiments(experiment_configs: list, num_cores: int = None, results_dir="results"):
     """
     Reads experiment configurations from a JSON file and runs them in parallel.
 
@@ -123,22 +148,12 @@ def run_battery_of_experiments(config_filepath: str, num_cores: int = None):
         else:
             print(f"Detected {num_cores} CPU cores. Using {num_cores} workers.")
 
-    # Ensure results directory exists
-    os.makedirs("results", exist_ok=True)
+    # Separate every run of battery of tests to its own dir
+    results_dir = results_dir + "/" + datetime.now().strftime("%Y%m%d-%H%M%")
     
-
-    try:
-        with open(config_filepath, 'r') as f:
-            experiment_configs = json.load(f)
-    except FileNotFoundError:
-        print(f"Error: Configuration file not found at {config_filepath}")
-        return
-    except json.JSONDecodeError:
-        print(f"Error: Invalid JSON in {config_filepath}")
-        return
-
-    print(f"Loaded {len(experiment_configs)} experiments from {config_filepath}")
-
+    # Ensure results directory exists
+    os.makedirs(results_dir, exist_ok=True)
+    
     # Create a multiprocessing Pool
     # The 'with' statement ensures the pool is properly closed
     all_results = []
@@ -148,7 +163,7 @@ def run_battery_of_experiments(config_filepath: str, num_cores: int = None):
         async_results = []
         for i, config in enumerate(experiment_configs):
             print(f"Submitting experiment {i+1}/{len(experiment_configs)}: {config.get('name', 'unnamed')}")
-            result = pool.apply_async(run_case, (config,))
+            result = pool.apply_async(run_case, (config,results_dir))
             async_results.append(result)
 
         # Wait for all tasks to complete and collect results
@@ -159,7 +174,7 @@ def run_battery_of_experiments(config_filepath: str, num_cores: int = None):
                 # You can add a timeout if you want to handle unresponsive processes
                 experiment_result = res.get()
                 all_results.append(experiment_result)
-                print(f"Experiment {i+1}/{len(experiment_configs)} ({experiment_result['exp_name']}) completed. Final Eval Reward: {experiment_result['final_avg_eval_reward']:.2f}")
+                print(f"Experiment {i+1}/{len(experiment_configs)}")
             except Exception as e:
                 print(f"Error running experiment {i+1}: {e}")
                 all_results.append({"error": str(e), "config": experiment_configs[i]})
@@ -170,10 +185,33 @@ def run_battery_of_experiments(config_filepath: str, num_cores: int = None):
         if "error" in res:
             print(f"  FAILED: {res['config'].get('name', 'Unnamed')} - Error: {res['error']}")
         else:
-            print(f"  {res['exp_name']}: Avg Eval Reward = {res['final_avg_eval_reward']:.2f}, Telemetry: {res['telemetry_path']}")
+            print(res["status"], res["timestamp"])
 
-    return all_results
+    return all_results, results_dir
 
+
+def load_results(results_dir, patt = "*"):
+    paths = list(Path(results_dir).glob(patt +".json"))
+    print(paths)
+    experiments = ['']*len(paths)
+    episodes = []
+    for i,p in enumerate(paths):
+        # try:
+            with open(p) as f:
+                data = json.load(f)
+                meta = data["metadata"]
+                id = meta["algorithm"] + meta["start_time"] + str(meta["gamma"])
+                meta["id"] = id 
+                experiments[i] =  meta
+
+                eps = pd.DataFrame(data["episodes"])
+                eps["exp_id"] = id
+                episodes.append(eps)
+        # except Exception as ex: 
+        #     print("oops:", p)
+    experiments = pd.DataFrame(experiments)
+    episodes = pd.concat(episodes)
+    return experiments, episodes
 
 if __name__ == '__main__':
     # It's crucial that code run by multiprocessing.Pool is either in another file

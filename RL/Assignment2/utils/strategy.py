@@ -43,7 +43,7 @@ class Strategy:
             return self.epsilon_greedy_with_decay(Q, state, episode)
         else:
             # If state is neither, return random
-            return random.randint(0, self.n_actions - 1)
+            return self.random()
 
     def random(self):
         return random.randint(0, self.n_actions - 1)

@@ -33,6 +33,31 @@ class RLAgent:
         
         # Algorithm-specific state (e.g., Q-table, Value table) will be initialized in subclasses
 
+    def size(self):
+        """
+        Returns estimated size of the object
+        """
+        raise NotImplementedError("Subclass must implement abstract method")
+
+    def default_dictionary_size(self, collection):
+        #TODO: move it somewhere else
+        import sys
+
+        # To get a better estimate of the contents, you'd have to iterate:
+        total_q_table_size = sys.getsizeof(collection) # Base size of the defaultdict
+        
+        if type(collection) is list:
+            for i in collection:
+                total_q_table_size += sys.getsizeof(i)
+        else:
+            for state_key, action_values in collection.items():
+                total_q_table_size += sys.getsizeof(state_key) # Size of the key
+                total_q_table_size += sys.getsizeof(action_values) # Size of the numpy array object
+                total_q_table_size += action_values.nbytes # Actual data in the numpy array (often larger)
+        return total_q_table_size
+        #print(f"Estimated total size of Q-table and its contents: {total_q_table_size} bytes")
+
+
     def get_parameters(self) -> dict:
         """
         Returns the parameters of the algorithm.
@@ -40,6 +65,7 @@ class RLAgent:
         return {
             "algorithm": self.__class__.__name__,
             "gamma": self.gamma,
+            "name": self.__class__.__name__,
             "strategy": self.strategy.get_parameters()
         }
 

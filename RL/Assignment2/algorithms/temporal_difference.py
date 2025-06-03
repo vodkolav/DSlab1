@@ -31,6 +31,8 @@ class TemporalDifference(RLAgent):
     def choose_action(self, state: int, episode) -> int: 
         return self.strategy.random() 
     
+    def size(self):
+        return super().default_dictionary_size(self.V)
 
     def choose_greedy_action(self, state: int) -> int:
         return self.strategy.greedy(self.V, state)

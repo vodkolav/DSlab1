@@ -33,6 +33,11 @@ class EligibilityTraces:
             self.E = None
             self.enabled = False
 
+    def size(self):
+        if self.enabled:
+            return self.host.default_dictionary_size(self.E) 
+        else:
+            return 0
 
     def reset(self):
         self.E = defaultdict(lambda: np.zeros(self.host.n_actions))

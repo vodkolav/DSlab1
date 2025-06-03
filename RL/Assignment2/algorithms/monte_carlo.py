@@ -23,7 +23,6 @@ class MonteCarlo(RLAgent):
             Q: The learned action-value function (defaultdict).
             policy: The learned epsilon-greedy policy (function).
         """
-
         super().__init__(env, strategy, gamma, **kwargs)
         
         n_actions = env.action_space.n
@@ -31,7 +30,7 @@ class MonteCarlo(RLAgent):
         self.q_table = defaultdict(lambda: np.zeros(n_actions))
         self.Returns_sum = defaultdict(lambda: np.zeros(n_actions))
         self.N_visits = defaultdict(lambda: np.zeros(n_actions))
-        self.SAR = []
+        self.History = []
         self.vizit = vizit
 
     def get_parameters(self) -> dict:
@@ -42,6 +41,13 @@ class MonteCarlo(RLAgent):
         par["vizit"] = self.vizit
         return par
 
+    def size(self):
+        res = super().default_dictionary_size(self.q_table) +\
+              super().default_dictionary_size(self.Returns_sum) +\
+              super().default_dictionary_size(self.N_visits)+\
+              super().default_dictionary_size(self.History)
+        return res 
+    
     def choose_action(self, state: int, episode) -> int: 
         action = self.strategy.action(self.q_table, state, episode)
         return action
@@ -51,19 +57,18 @@ class MonteCarlo(RLAgent):
 
     def update(self, state: int, action: int, 
                reward: float, next_state: int, 
-               terminated: bool, truncated: bool):
-        
+               terminated: bool, truncated: bool):        
 
         if not terminated and not truncated:
             # Log each step unless episode is over
-            self.SAR.append((state, action, reward))
+            self.History.append((state, action, reward))
 
         else: 
             # Update Q-values after the episode
             G = 0 # Return
             # Iterate through the episode in reverse to calculate returns
-            for t in range(len(self.SAR) - 1, -1, -1):
-                state_t, action_t, reward_t = self.SAR[t]
+            for t in range(len(self.History) - 1, -1, -1):
+                state_t, action_t, reward_t = self.History[t]
                 G = self.gamma * G + reward_t
 
                 # Every-Visit MC: Update for every time a state-action pair is visited
@@ -73,7 +78,8 @@ class MonteCarlo(RLAgent):
                 self.N_visits[state_t][action_t] += 1
                 self.q_table[state_t][action_t] = self.Returns_sum[state_t][action_t] \
                                              / self.N_visits[state_t][action_t]
-                
+            self.History = []
+
     def get_intestines(self):
         return self.q_table
     

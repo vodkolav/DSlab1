@@ -37,6 +37,10 @@ class SARSA(RLAgent):
     def choose_greedy_action(self, state: int) -> int:
         return self.strategy.greedy(self.q_table, state)
 
+    def size(self):
+        res = super().default_dictionary_size(self.q_table) +\
+            self.ET.size()
+        return res 
 
     def update(self, state: int, action: int, 
                reward: float, next_state: int, 
@@ -67,6 +71,8 @@ class SARSA(RLAgent):
         """
         par = super().get_parameters()
         par["alpha"] = self.alpha
+        add = f" \\w E.T. (λ={self.ET.lambda_})" if self.ET.enabled else ""
+        par["name"] = par["name"] + add
         return par
   
     def get_intestines(self):

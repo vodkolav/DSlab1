@@ -3,6 +3,7 @@ import numpy as np
 from collections import defaultdict
 from utils.strategy import Strategy
 from algorithms.agent import RLAgent
+import sys
 
 class PolicyIteration(RLAgent):
     """
@@ -32,7 +33,10 @@ class PolicyIteration(RLAgent):
         # Initialize Q-table
         #self.q_table = defaultdict(lambda: np.zeros(self.n_actions))
 
-
+    def size(self):
+        res = sys.getsizeof(self.policy) +\
+            super().default_dictionary_size(self.V)
+        return res 
 
     def choose_action(self, state: int, episode) -> int: 
 

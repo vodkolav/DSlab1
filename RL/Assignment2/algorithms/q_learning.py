@@ -30,6 +30,12 @@ class QLearning(RLAgent):
         self.q_table = defaultdict(lambda: np.zeros(self.n_actions))
         self.ET = EligibilityTraces(self, lambda_) 
 
+    def size(self):
+        res = super().default_dictionary_size(self.q_table) +\
+            self.ET.size()
+        return res 
+
+
     def choose_action(self, state: int, episode: int) -> int:
         return self.strategy.action(self.q_table, state, episode)
 
@@ -66,6 +72,8 @@ class QLearning(RLAgent):
         """
         par = super().get_parameters()
         par["alpha"] = self.alpha
+        add = f" \\w E.T. (λ={self.ET.lambda_})" if self.ET.enabled else ""
+        par["name"] = par["algorithm"] + add
         return par
     
     def get_intestines(self):

@@ -85,16 +85,14 @@ class Experiment:
             num_episodes: Total number of episodes for training.
         """
         self.is_training = True # Set to True for training
-        self.telemetry.report_start(self.is_training, num_episodes) # Start telemetry reporting
+
         for i_episode in range(num_episodes):
 
             self.run_episode(i_episode) # No rendering during training usually
-            self.telemetry.report_progress()
+            self.telemetry.progress()
             if self.algorithm.terminate_prematurely:
-                print("Algorithm decided to terminate prematurely.")
+                self.telemetry.report("Algorithm decided to terminate prematurely.")
                 break
-
-        self.telemetry.report_end() # End telemetry reporting
 
 
     def evaluate_algorithm(self, num_episodes: int = 10):
@@ -106,14 +104,10 @@ class Experiment:
         """
         self.is_training = False # Set to False for evaluation
         
-        self.telemetry.report_start(self.is_training, num_episodes)
-
         for i_episode in range(num_episodes):
 
             self.run_episode(i_episode)
-            self.telemetry.report_progress()
-
-        self.telemetry.report_end()
+            self.telemetry.progress()
 
 
     # --- Special Handling for Dynamic Programming ---
@@ -128,16 +122,19 @@ class Experiment:
         print("Dynamic Programming finished.")
         # You would then get the policy/value function using algorithm.get_policy() or algorithm.get_value_function()
 
-    def run_experiment(self,train_episodes, eval_episodes, render = False):
+
+    def run_experiment(self, train_episodes, eval_episodes, render = False):
 
         self.render = render
 
+        self.telemetry.start(train_episodes + eval_episodes) 
 
         self.train_algorithm(train_episodes)
 
         # --- Optional: Evaluate the trained algorithm ---
         self.evaluate_algorithm(eval_episodes)
 
+        self.telemetry.end()
 
         # --- Example for Dynamic Programming (Different Structure) ---
         # DP algorithms don't fit the step-by-step update in the same training loop

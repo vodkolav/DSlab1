@@ -31,9 +31,9 @@ class TelemetryManager:
         self.metadata = {
             "start_time": datetime.now().strftime(r"%y.%m.%d-%H.%M"),  
             "env_name": env.spec.id if env.spec else "Unknown",
-            "algorithm": algorithm.get_parameters(),
             "rss_mb": self.get_memory_usage_mb()
         }
+        self.metadata.update(algorithm.get_parameters())
     
         self.tot_episodes = 0
         self.samplePoints = list(range(100))
@@ -59,6 +59,9 @@ class TelemetryManager:
         print("tracking and reporting once every", invl, "episodes")
         self.tot_episodes = value
 
+    @property
+    def mode(self):
+        return "Training" if self._current_episode["is_training"] else "Evaluating"
 
     def reset_episode_metrics(self, i_episode):
         """Resets metrics for a new episode."""
@@ -94,26 +97,40 @@ class TelemetryManager:
 
             self._current_episode["rss_mb"] = self.get_memory_usage_mb()
 
+            self._current_episode["size_bytes"] = agent.size()
+
             self.episodes.append(deepcopy(self._current_episode))
 
 
+    def report(self, what, newline = False):
+        if newline:
+            print(what)
+        else:
+            print(f"\r{what}" , end='')
 
-    def report_start(self, is_training, num_episodes):
+
+    def start(self, num_episodes):
+        # Start telemetry reporting for an experiment
         self.total_episodes = num_episodes
-        self.mode = "Training" if is_training else "Evaluating"
-        print(f"{self.mode} {self.metadata['algorithm']['algorithm']} over {num_episodes} episodes")
+        run_timestamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+        self.metadata["start_time"] = run_timestamp
+        self.metadata["pid"] = os.getpid()
+        self.report(f" Starting {self.metadata['name']} over {num_episodes} episodes", newline=True)
 
 
-    def report_progress(self):
+    def progress(self):
         # Optional: Print progress        
         if self.i_episode in self.samplePoints:
             avg_reward = self.get_average_reward()
-            print(f"\r {self.mode} Episode {self.i_episode}/{self.total_episodes}, Avg Reward (last 100): {avg_reward:.2f}", end='')
+            msg = f"\r {self.mode} Episode {self.i_episode}/{self.total_episodes}, Avg Reward (last 100): {avg_reward:.2f}"
+            self.report(msg)
 
 
-    def report_end(self):
+    def end(self):
         # Optional: Print end message
-        print(f"\n{self.mode} ended. Total episodes recorded: {len(self.episodes)}")
+        end_timestamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+        self.metadata["end_time"] = end_timestamp
+        self.report(f"\n {self.metadata['name']} ended. Total episodes recorded: {len(self.episodes)}", newline=True)
 
 
     def get_memory_usage_mb(self):
@@ -122,7 +139,7 @@ class TelemetryManager:
         Works cross-platform.
         """
         process = psutil.Process(os.getpid())
-        return process.memory_info().rss / (1024 * 1024) # RSS in bytes
+        return process.memory_info().rss / (1024 * 1024) # RSS in megabytes
     
 
     def get_average_reward(self, window_size: int = 100) -> float:
