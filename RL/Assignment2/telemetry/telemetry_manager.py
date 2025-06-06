@@ -7,7 +7,7 @@ import time
 import psutil
 import os
 from copy import deepcopy
-
+from algorithms.agent import RLAgent
 
 class NumpyEncoder(json.JSONEncoder):
     """ Special json encoder for numpy types 
@@ -26,7 +26,7 @@ class TelemetryManager:
     """
     Manages the collection of training and evaluation metrics.
     """
-    def __init__(self, env, algorithm):
+    def __init__(self, env, algorithm, limit = 100):
         
         self.metadata = {
             "start_time": datetime.now().strftime(r"%y.%m.%d-%H.%M"),  
@@ -36,7 +36,8 @@ class TelemetryManager:
         self.metadata.update(algorithm.get_parameters())
     
         self.tot_episodes = 0
-        self.samplePoints = list(range(100))
+
+        self.samplePoints = list(range(limit))
 
         # Use defaultdicts to store lists of metrics per episode/step
         self.episodes = []
@@ -50,7 +51,7 @@ class TelemetryManager:
 
     @total_episodes.setter
     def total_episodes(self, value):
-        limit = 100
+        limit = len(self.samplePoints)
         if value < limit:
             limit = value
         
@@ -85,7 +86,7 @@ class TelemetryManager:
         #self._current_episode["info"].append(info if info is not None else {})
         # You can record other step-specific info if needed from the 'info' dict
 
-    def record_episode_end(self, agent , is_training = True):
+    def record_episode_end(self, agent: RLAgent , is_training = True):
         """Records metrics at the end of an episode."""
         if self.i_episode in self.samplePoints:
 
@@ -94,6 +95,8 @@ class TelemetryManager:
             self._current_episode["end"] = time.time()
 
             self._current_episode["internal_state"] = dict(agent.get_intestines())
+            
+            self._current_episode["epsilon"] = agent.strategy.epsilon
 
             self._current_episode["rss_mb"] = self.get_memory_usage_mb()
 

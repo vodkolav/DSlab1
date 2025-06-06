@@ -74,6 +74,7 @@ class QLearning(RLAgent):
         par["alpha"] = self.alpha
         add = f" \\w E.T. (λ={self.ET.lambda_})" if self.ET.enabled else ""
         par["name"] = par["algorithm"] + add
+        par["lambda"] = self.ET.lambda_
         return par
     
     def get_intestines(self):

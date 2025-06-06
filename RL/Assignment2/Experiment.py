@@ -14,11 +14,11 @@ class Experiment:
             env: The Gymnasium environment.
             algorithm: The RLAlgorithm instance.
     """
-    def __init__(self, env: gym.Env, algorithm: RLAgent):
+    def __init__(self, env: gym.Env, algorithm: RLAgent, limit = 100):
         self.env = env
         self.algorithm = algorithm
         # Create Telemetry Manager
-        self.telemetry = TelemetryManager(env, algorithm)
+        self.telemetry = TelemetryManager(env, algorithm, limit)
 
 
     def run_episode(self, i_episode):
@@ -130,6 +130,8 @@ class Experiment:
         self.telemetry.start(train_episodes + eval_episodes) 
 
         self.train_algorithm(train_episodes)
+
+        self.telemetry.report("\nTraining done.", newline=True)
 
         # --- Optional: Evaluate the trained algorithm ---
         self.evaluate_algorithm(eval_episodes)

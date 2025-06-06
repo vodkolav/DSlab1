@@ -2,7 +2,7 @@
 
 import gymnasium as gym
 import os
-import datetime
+from datetime import datetime
 import json
 
 import multiprocessing
@@ -55,6 +55,7 @@ def run_case(exp_config: dict, output_dir = "data/results") -> dict:
     num_eval_episodes = exp_config["num_eval_episodes"]
     render_evaluation = exp_config.get("render_evaluation", False) # Don't render in parallel usually
     save_ansi_frames = exp_config.get("save_ansi_frames", False) # Or handle differently
+    telemetry_episodes_limit = exp_config.get("telemetry_episodes_limit", 100)
 
     algorithm_name = exp_config["algorithm"]["name"]
     algo_params = exp_config["algorithm"]["params"]
@@ -77,17 +78,13 @@ def run_case(exp_config: dict, output_dir = "data/results") -> dict:
                          f"Available algorithms: {list(ALGORITHM_CLASSES.keys())}")
 
     agent = algorithm_class(env, strat, **algo_params) # Adjust based on the actual algorithm class
-    exper = Experiment(env, agent)
+    exper = Experiment(env, agent, telemetry_episodes_limit)
 
     # --- Run Experiment ---
     # The run_experiment method from your Experiment class
     # You might want to return a summary directly or save it.
     # For parallel runs, it's best to save telemetry to a unique file.    
     
-    os.makedirs(output_dir, exist_ok=True)
-
- 
-
     # Assuming your Experiment.run_experiment takes a telemetry object and potentially an output path
     exper.run_experiment(
         train_episodes=num_training_episodes,
@@ -105,7 +102,7 @@ def run_case(exp_config: dict, output_dir = "data/results") -> dict:
     pid = exper.telemetry.metadata["pid"]
 
     fname =  f"{run_timestamp}_{pid}.json"
-
+    os.makedirs(output_dir, exist_ok=True)
     telemetry_filepath = os.path.join(output_dir, fname)
     exper.telemetry.save_metrics(telemetry_filepath) # Save the telemetry
 
@@ -149,7 +146,7 @@ def run_battery_of_experiments(experiment_configs: list, num_cores: int = None, 
             print(f"Detected {num_cores} CPU cores. Using {num_cores} workers.")
 
     # Separate every run of battery of tests to its own dir
-    results_dir = results_dir + "/" + datetime.now().strftime("%Y%m%d-%H%M%")
+    results_dir = results_dir + "/" + datetime.now().strftime("%Y%m%d-%H%M")
     
     # Ensure results directory exists
     os.makedirs(results_dir, exist_ok=True)
