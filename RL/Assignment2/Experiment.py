@@ -14,11 +14,41 @@ class Experiment:
             env: The Gymnasium environment.
             algorithm: The RLAlgorithm instance.
     """
-    def __init__(self, env: gym.Env, algorithm: RLAgent, limit = 100):
+    def __init__(self, env: gym.Env, algorithm: RLAgent, experiment_config: dict = None ):
         self.env = env
         self.algorithm = algorithm
+
+        if experiment_config is None:
+            experiment_config = self.config_template()
+
+        experiment_config["algorithm"] = algorithm.get_parameters()
+        
+        experiment_config["strategy"] = algorithm.strategy.get_parameters()
+
         # Create Telemetry Manager
-        self.telemetry = TelemetryManager(env, algorithm, limit)
+        self.telemetry = TelemetryManager(experiment_config )
+
+    @staticmethod
+    def config_template():
+        """
+        Returns a template for the experiment configuration.
+        
+        Args:
+            config: A dictionary to fill with the experiment parameters.
+        
+        Returns:
+            A dictionary with the experiment configuration template.
+        """
+        conf = {
+                "metadata": {
+                    "telemetry_episodes_limit": 256,
+                },
+                "env": {},
+                "algorithm": {},
+                "strategy": {}
+            }
+        return conf
+    
 
 
     def run_episode(self, i_episode):

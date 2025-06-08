@@ -69,10 +69,10 @@ class SARSA(RLAgent):
         """
         Returns the parameters of the algorithm.
         """
-        par = super().get_parameters()
-        par["alpha"] = self.alpha
-        add = f" \\w E.T. (λ={self.ET.lambda_})" if self.ET.enabled else ""
-        par["name"] = par["name"] + add
+        par = super().get_parameters() 
+        par["moniker"] = par["name"] + self.ET.moniker()
+        par["params"]["alpha"] = self.alpha
+        par["params"]["lambda"] = self.ET.lambda_
         return par
   
     def get_intestines(self):

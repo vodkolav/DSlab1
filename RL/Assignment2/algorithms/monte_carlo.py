@@ -35,10 +35,10 @@ class MonteCarlo(RLAgent):
 
     def get_parameters(self) -> dict:
         """
-        Returns the parameters of the Q-Learning algorithm.
+        Returns the parameters of the algorithm.
         """
         par = super().get_parameters()
-        par["vizit"] = self.vizit
+        par["params"]["vizit"] = self.vizit
         return par
 
     def size(self):

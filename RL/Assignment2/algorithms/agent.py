@@ -63,11 +63,12 @@ class RLAgent:
         Returns the parameters of the algorithm.
         """
         return {
-            "algorithm": self.__class__.__name__,
-            "gamma": self.gamma,
             "name": self.__class__.__name__,
-            "strategy": self.strategy.get_parameters()
-        }
+            "moniker": self.__class__.__name__,
+            "params": {
+                "gamma": self.gamma
+                      }
+                }
 
     def choose_action(self, state: int, episode: int) -> int:
         """

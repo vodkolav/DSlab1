@@ -29,6 +29,7 @@ class PolicyIteration(RLAgent):
         self.policy = np.random.randint(0, self.n_actions, self.n_states)
         self.V = defaultdict(lambda: np.zeros(1))
 
+        self.policy_stable = False
 
         # Initialize Q-table
         #self.q_table = defaultdict(lambda: np.zeros(self.n_actions))
@@ -39,9 +40,7 @@ class PolicyIteration(RLAgent):
         return res 
 
     def choose_action(self, state: int, episode) -> int: 
-
-        self.V = self.policy_evaluation(self.policy, self.V)
-        return 0
+        return self.choose_greedy_action(state)
 
 
     def choose_greedy_action(self, state: int) -> int:
@@ -52,13 +51,23 @@ class PolicyIteration(RLAgent):
                reward: float, next_state: int, 
                terminated: bool, truncated: bool):
         """
-        Updates the Q-table based on the Q-Learning update rule.
-        Called by the main training loop after each step.
+        Since this is a policy iteration algorithm, it is not supposed to 
+        update the Q-table from observations, but rather to update the policy 
+        based on the value function. 
+        But there is still an iterative improvement process, which we want to observe.
+        So we do a little sneaky here. We attach policy iterations to "pseudo-episodes" 
+        and run the policy iteration through the same game loop as other algorithms.
+        So the policy evaluation and improvement will be done every episode and not step.
         """
-        new_policy, policy_stable = self.policy_improvement(self.V)
-        self.policy = new_policy
-        if policy_stable:
-            self.terminate_prematurely = True
+        if terminated or truncated:
+            if self.policy_stable:
+                pass 
+            else:
+                self.V = self.policy_evaluation(self.policy, self.V)
+                new_policy, policy_stable = self.policy_improvement(self.V)
+                self.policy = new_policy
+                self.policy_stable = policy_stable
+                #self.terminate_prematurely = True
 
 
     def policy_evaluation(self, policy, V):
@@ -132,7 +141,7 @@ class PolicyIteration(RLAgent):
         Returns the parameters of the Q-Learning algorithm.
         """
         par = super().get_parameters()
-        par["theta"] = self.theta
+        par["params"]["theta"] = self.theta
         return par
 
     def get_intestines(self):

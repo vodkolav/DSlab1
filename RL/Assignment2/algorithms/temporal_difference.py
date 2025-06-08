@@ -57,7 +57,7 @@ class TemporalDifference(RLAgent):
         Returns the parameters of the algorithm.
         """
         par = super().get_parameters()
-        par["alpha"] = self.alpha
+        par["params"]["alpha"] = self.alpha
         return par
 
     def get_intestines(self):

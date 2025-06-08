@@ -71,10 +71,9 @@ class QLearning(RLAgent):
         Returns the parameters of the Q-Learning algorithm.
         """
         par = super().get_parameters()
-        par["alpha"] = self.alpha
-        add = f" \\w E.T. (λ={self.ET.lambda_})" if self.ET.enabled else ""
-        par["name"] = par["algorithm"] + add
-        par["lambda"] = self.ET.lambda_
+        par["moniker"] = par["name"] + self.ET.moniker()
+        par["params"]["alpha"] = self.alpha
+        par["params"]["lambda"] = self.ET.lambda_
         return par
     
     def get_intestines(self):

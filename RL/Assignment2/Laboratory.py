@@ -50,12 +50,14 @@ def run_case(exp_config: dict, output_dir = "data/results") -> dict:
     # print(f"[{os.getpid()}] Starting experiment: {exp_name}")
 
     # --- Extract parameters ---
-    env_id = exp_config["env_id"]
-    num_training_episodes = exp_config["num_training_episodes"]
-    num_eval_episodes = exp_config["num_eval_episodes"]
-    render_evaluation = exp_config.get("render_evaluation", False) # Don't render in parallel usually
-    save_ansi_frames = exp_config.get("save_ansi_frames", False) # Or handle differently
-    telemetry_episodes_limit = exp_config.get("telemetry_episodes_limit", 100)
+    env_id = exp_config["env"]["name"]
+
+    meta = exp_config["metadata"]
+    num_training_episodes = meta["num_training_episodes"]
+    num_eval_episodes = meta["num_eval_episodes"]
+    render_evaluation = meta.get("render_evaluation", False) # Don't render in parallel usually
+    save_ansi_frames = meta.get("save_ansi_frames", False) # Or handle differently
+    
 
     algorithm_name = exp_config["algorithm"]["name"]
     algo_params = exp_config["algorithm"]["params"]
@@ -78,7 +80,7 @@ def run_case(exp_config: dict, output_dir = "data/results") -> dict:
                          f"Available algorithms: {list(ALGORITHM_CLASSES.keys())}")
 
     agent = algorithm_class(env, strat, **algo_params) # Adjust based on the actual algorithm class
-    exper = Experiment(env, agent, telemetry_episodes_limit)
+    exper = Experiment(env, agent, exp_config)
 
     # --- Run Experiment ---
     # The run_experiment method from your Experiment class
@@ -99,16 +101,16 @@ def run_case(exp_config: dict, output_dir = "data/results") -> dict:
 
 
     run_timestamp = exper.telemetry.metadata["start_time"] 
-    pid = exper.telemetry.metadata["pid"]
+    ex_id = exper.telemetry.metadata["id"]
 
-    fname =  f"{run_timestamp}_{pid}.json"
+    fname =  f"{ex_id}.json"
     os.makedirs(output_dir, exist_ok=True)
     telemetry_filepath = os.path.join(output_dir, fname)
     exper.telemetry.save_metrics(telemetry_filepath) # Save the telemetry
 
     env.close()
 
-    result = {"status": "done", "pid": str(pid), "timestamp":run_timestamp, "telemetry_filepath": telemetry_filepath}
+    result = {"status": "done", "experiment_id": str(ex_id), "timestamp":run_timestamp, "telemetry_filepath": telemetry_filepath}
 
     return result
 
@@ -187,8 +189,26 @@ def run_battery_of_experiments(experiment_configs: list, num_cores: int = None, 
     return all_results, results_dir
 
 
+def load_experiment(data):
+    meta = data["metadata"]
+
+    # Flatten the algorithm parameters into the metadata
+    # I'll deal with strategy parameters later
+    algo = data["algorithm"]
+    algo.update(algo["params"])
+    algo.pop("params", None)
+    meta.update(algo)
+
+    episodes = pd.DataFrame(data["episodes"])
+    episodes["exp_id"] = meta["id"]
+
+    return meta, episodes
+
+
 def load_results(results_dir, patt = "*"):
-    paths = list(Path(results_dir).glob(patt +".json"))
+    pth = Path(results_dir)
+    print(pth.absolute())
+    paths = list(pth.glob(patt +".json"))
     print(paths)
     experiments = ['']*len(paths)
     episodes = []
@@ -196,14 +216,9 @@ def load_results(results_dir, patt = "*"):
         # try:
             with open(p) as f:
                 data = json.load(f)
-                meta = data["metadata"]
-                id = meta["algorithm"] + meta["start_time"] + str(meta["gamma"])
-                meta["id"] = id 
-                experiments[i] =  meta
-
-                eps = pd.DataFrame(data["episodes"])
-                eps["exp_id"] = id
-                episodes.append(eps)
+                experiment, exp_episodes = load_experiment(data)
+                experiments[i] = experiment
+                episodes.append(exp_episodes)
         # except Exception as ex: 
         #     print("oops:", p)
     experiments = pd.DataFrame(experiments)

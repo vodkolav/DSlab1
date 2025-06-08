@@ -26,17 +26,23 @@ class TelemetryManager:
     """
     Manages the collection of training and evaluation metrics.
     """
-    def __init__(self, env, algorithm, limit = 100):
+    def __init__(self, experiment_config: dict ):
         
-        self.metadata = {
-            "start_time": datetime.now().strftime(r"%y.%m.%d-%H.%M"),  
-            "env_name": env.spec.id if env.spec else "Unknown",
-            "rss_mb": self.get_memory_usage_mb()
-        }
-        self.metadata.update(algorithm.get_parameters())
-    
+        self.metadata = experiment_config["metadata"]
+        self.metadata.update(
+        {
+            "init_rss_mb": self.get_memory_usage_mb()
+        })
+
+        self.env = experiment_config["env"]
+
+        self.algorithm = experiment_config["algorithm"]
+        
+        self.strategy = experiment_config["strategy"]
+
         self.tot_episodes = 0
 
+        limit = self.metadata.get("telemetry_episodes_limit", 100)
         self.samplePoints = list(range(limit))
 
         # Use defaultdicts to store lists of metrics per episode/step
@@ -118,7 +124,9 @@ class TelemetryManager:
         run_timestamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
         self.metadata["start_time"] = run_timestamp
         self.metadata["pid"] = os.getpid()
-        self.report(f" Starting {self.metadata['name']} over {num_episodes} episodes", newline=True)
+        self.metadata["id"] = self.algorithm["name"] + "_" + str(run_timestamp) + "_" + str(os.getpid())
+        alg_name = self.algorithm["name"]
+        self.report(f" Starting {alg_name} over {num_episodes} episodes", newline=True)
 
 
     def progress(self):
@@ -133,7 +141,8 @@ class TelemetryManager:
         # Optional: Print end message
         end_timestamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
         self.metadata["end_time"] = end_timestamp
-        self.report(f"\n {self.metadata['name']} ended. Total episodes recorded: {len(self.episodes)}", newline=True)
+        alg_name = self.algorithm["name"]
+        self.report(f"\n {alg_name} ended. Total episodes recorded: {len(self.episodes)}", newline=True)
 
 
     def get_memory_usage_mb(self):
@@ -155,6 +164,9 @@ class TelemetryManager:
         """Saves collected metrics to a JSON file."""
         metrics_data = {
             "metadata": self.metadata,
+            "env": self.env,
+            "algorithm": self.algorithm,
+            "strategy": self.strategy,             
             "episodes": self.episodes,  
         }
         with open(filename, 'w') as f:

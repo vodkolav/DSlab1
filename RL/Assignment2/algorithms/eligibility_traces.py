@@ -39,6 +39,20 @@ class EligibilityTraces:
         else:
             return 0
 
+    def moniker(self): 
+        return f" \\w E.T. (λ={self.lambda_})" if self.enabled else ""
+
+
+    def get_parameters(self) -> dict:
+        """
+        Returns the parameters of the eligibility traces.
+        """
+        par = {
+            "lambda_": self.lambda_
+        }
+        return par
+
+
     def reset(self):
         self.E = defaultdict(lambda: np.zeros(self.host.n_actions))
 

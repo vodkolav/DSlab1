@@ -29,10 +29,13 @@ class Strategy:
         Returns the parameters of the strategy.
         """
         return {
-            "initial_epsilon": self.initial_epsilon,
-            "min_epsilon": self.min_epsilon,
-            "epsilon_decay_episodes": self.epsilon_decay_episodes,
-            "decay": self.decay
+            "name": "EpsilonGreedy",
+            "params": {
+                "initial_epsilon": self.initial_epsilon,
+                "min_epsilon": self.min_epsilon,
+                "epsilon_decay_episodes": self.epsilon_decay_episodes,
+                "decay": self.decay
+            }
         }
 
     def action(self, Q: defaultdict, 
