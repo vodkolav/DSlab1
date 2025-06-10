@@ -185,3 +185,33 @@ def plot_Q_evolution(experiment_data,  metric = "pickup"):
     fig.update_traces(textfont=dict(size=20, color="blue"),
                       marker=dict(size=20 ))
     return fig
+
+
+def experiment_timeline(experiments, episodes, sort_param = "gamma"):
+    experiments_smol =  experiments.copy() # .drop("strategy", axis=1)
+    episodes_smol =  episodes.drop(["internal_state","replay", "info"], axis=1)
+    
+    q = f"""
+    SELECT ex.id, ex.name, ex.moniker, ex.init_rss_mb as init_mem,  
+    ex.alpha, ex.gamma, ex.theta, ex.decay, ex.initial_epsilon, -- ex.vizit, 
+    i, is_training, start, end, end - start as duration, 
+    length, ep.reward, ep.rss_mb, ep.size_bytes, ep.epsilon, 
+
+    avg(reward) OVER (
+        PARTITION BY is_training, exp_id
+        ORDER BY i
+        RANGE BETWEEN 50 PRECEDING AND CURRENT ROW
+    ) AS avg_reward, 
+
+    avg(length) OVER (
+        PARTITION BY is_training, exp_id
+        ORDER BY i
+        RANGE BETWEEN 50 PRECEDING AND CURRENT ROW
+    ) AS avg_length
+
+    FROM experiments_smol ex
+    LEFT JOIN episodes_smol as ep ON ex.id = ep.exp_id
+    -- WHERE is_training = 1
+    ORDER BY moniker, {sort_param}, i
+    """
+    return ps.sqldf(q).fillna(0)

@@ -125,7 +125,7 @@ class Experiment:
                 break
 
 
-    def evaluate_algorithm(self, num_episodes: int = 10):
+    def evaluate_algorithm(self, num_episodes: int = 10, initial_episode: int = 0):
         """
         Evaluates the learned policy of an algorithm.
 
@@ -134,7 +134,7 @@ class Experiment:
         """
         self.is_training = False # Set to False for evaluation
         
-        for i_episode in range(num_episodes):
+        for i_episode in range(initial_episode, initial_episode + num_episodes):
 
             self.run_episode(i_episode)
             self.telemetry.progress()
@@ -164,7 +164,7 @@ class Experiment:
         self.telemetry.report("\nTraining done.", newline=True)
 
         # --- Optional: Evaluate the trained algorithm ---
-        self.evaluate_algorithm(eval_episodes)
+        self.evaluate_algorithm(eval_episodes, train_episodes+1)
 
         self.telemetry.end()
 

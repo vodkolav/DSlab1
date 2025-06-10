@@ -139,6 +139,11 @@ def run_battery_of_experiments(experiment_configs: list, num_cores: int = None, 
         config_filepath: Path to the JSON file containing experiment configurations.
         num_cores: Number of CPU cores to use. Defaults to all available cores.
     """
+    global skip_run_battery_of_experiments 
+    if skip_run_battery_of_experiments:
+        print("Skipping run_battery_of_experiments as per global setting.")
+        return [], results_dir
+
     if num_cores is None:
         num_cores = os.cpu_count()
         if num_cores is None:
@@ -198,6 +203,10 @@ def load_experiment(data):
     algo.update(algo["params"])
     algo.pop("params", None)
     meta.update(algo)
+
+    strat = data["strategy"]
+    meta.update({"decay": strat["params"]["decay"],
+                 "initial_epsilon": strat["params"]["initial_epsilon"],})
 
     episodes = pd.DataFrame(data["episodes"])
     episodes["exp_id"] = meta["id"]
