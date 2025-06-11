@@ -193,18 +193,24 @@ def experiment_timeline(experiments, episodes, sort_param = "gamma"):
     
     q = f"""
     SELECT ex.id, ex.name, ex.moniker, ex.init_rss_mb as init_mem,  
-    ex.alpha, ex.gamma, ex.theta, ex.decay, ex.initial_epsilon, -- ex.vizit, 
+    ex.alpha, ex.gamma, ex.theta, ex.decay, ex.lambda, ex.initial_epsilon, -- ex.vizit, 
     i, is_training, start, end, end - start as duration, 
     length, ep.reward, ep.rss_mb, ep.size_bytes, ep.epsilon, 
 
     avg(reward) OVER (
-        PARTITION BY is_training, exp_id
+        PARTITION BY {sort_param}, is_training, exp_id
         ORDER BY i
         RANGE BETWEEN 50 PRECEDING AND CURRENT ROW
     ) AS avg_reward, 
 
+    sum(reward) OVER (
+        PARTITION BY {sort_param}, is_training, exp_id
+        ORDER BY i
+        RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+    ) AS cumul_reward, 
+
     avg(length) OVER (
-        PARTITION BY is_training, exp_id
+        PARTITION BY {sort_param}, is_training, exp_id
         ORDER BY i
         RANGE BETWEEN 50 PRECEDING AND CURRENT ROW
     ) AS avg_length

@@ -92,13 +92,17 @@ class TelemetryManager:
         #self._current_episode["info"].append(info if info is not None else {})
         # You can record other step-specific info if needed from the 'info' dict
 
-    def record_episode_end(self, agent: RLAgent , is_training = True):
+    def record_episode_end(self, agent: RLAgent, is_training, terminated, truncated):
         """Records metrics at the end of an episode."""
         if self.i_episode in self.samplePoints:
 
             self._current_episode["is_training"] = is_training
 
             self._current_episode["end"] = time.time()
+
+            self._current_episode["terminated"] = terminated
+
+            self._current_episode["truncated"] = truncated
 
             self._current_episode["internal_state"] = dict(agent.get_intestines())
             

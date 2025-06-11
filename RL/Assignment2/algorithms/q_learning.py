@@ -60,7 +60,7 @@ class QLearning(RLAgent):
         td_error = td_target - self.q_table[state][action]
 
         if self.ET.enabled:            
-            self.ET.update(state, action, td_error, terminated)
+            self.ET.update(state, action, td_error, terminated, truncated)
         else:
             # If no eligibility traces, just update the Q-table directly
             self.q_table[state][action] = self.q_table[state][action] + self.alpha * td_error

@@ -56,7 +56,7 @@ class EligibilityTraces:
     def reset(self):
         self.E = defaultdict(lambda: np.zeros(self.host.n_actions))
 
-    def update(self, state, action, td_error: float, terminated: bool = False):
+    def update(self, state, action, td_error: float, terminated: bool, truncated: bool):
 
         # Update eligibility trace for the current state - action pair
         # For state-value prediction, the trace for state s is typically incremented by 1
@@ -69,8 +69,8 @@ class EligibilityTraces:
                     self.host.q_table[s][a] = self.host.q_table[s][a] + self.host.alpha * td_error * self.E[s][a]
                     # Decay trace
                     self.E[s][a] = self.host.gamma * self.lambda_ * self.E[s][a]
-        if terminated:
-            # If the episode is terminated, reset the eligibility traces
+        if terminated or truncated:
+            # If the episode is terminated or truncated, reset the eligibility traces
             self.reset()
 
     def get_trace(self):

@@ -4,7 +4,7 @@ import gymnasium as gym
 import os
 from datetime import datetime
 import json
-
+from dataclasses import dataclass
 import multiprocessing
 import os
 
@@ -34,6 +34,63 @@ ALGORITHM_CLASSES = {
     "TemporalDifference": TemporalDifference,
 }
 
+@dataclass
+class Constants:
+    ENV_ID: str = "Taxi-v3"
+    NUM_TRAINING_EPISODES: int = 1000
+    NUM_EVAL_EPISODES: int = 100
+    RENDER_EVALUATION: bool = False 
+    SKIP: bool = False
+
+
+def make_case(C: Constants, algo_name ,alpha, gamma, lambda_, epsilon = ("linear", 1) , theta = 1e-5, ):
+    
+    decay, eps = epsilon
+
+    # descr = {"case": i, "algo_name": algo_name , "alpha": alpha, "gamma": gamma, 
+    #          "lambda_":lambda_, "epsilon": epsilon, "theta": theta}
+
+    Case =  {
+        "metadata": {
+            "name": f"",
+            "description": f"Experiment with {algo_name} algorithm, gamma={gamma}, lambda={lambda_}",
+            "num_training_episodes": C.NUM_TRAINING_EPISODES,
+            "num_eval_episodes": C.NUM_EVAL_EPISODES,
+            "render_evaluation": C.RENDER_EVALUATION,
+            "save_ansi_frames": False,
+            "telemetry_episodes_limit": 256,
+            "skip": C.SKIP
+        },
+        "env": {
+            "name": C.ENV_ID,
+        } ,
+        "algorithm": {
+            "name": algo_name ,
+            "params": {
+                "alpha": alpha,  
+                "gamma": gamma,
+                "lambda_": lambda_,
+                "theta": theta,  # Only for Dynamic Programming
+            }
+        },
+        "strategy": {
+            "name": "EpsilonGreedy",
+            "params":{
+                "decay": decay,
+                "initial_epsilon": eps,
+                "min_epsilon": 0.01,
+                "epsilon_decay_episodes": C.NUM_TRAINING_EPISODES
+            }
+        }
+    }
+    return Case
+
+def summary(Cases):
+    jn = pd.json_normalize(Cases)
+    jnu = jn.nunique()
+    cols = jnu.index[jnu > 1].tolist()
+    return jn[cols]
+
 
 def run_case(exp_config: dict, output_dir = "data/results") -> dict:
     """
@@ -58,6 +115,9 @@ def run_case(exp_config: dict, output_dir = "data/results") -> dict:
     render_evaluation = meta.get("render_evaluation", False) # Don't render in parallel usually
     save_ansi_frames = meta.get("save_ansi_frames", False) # Or handle differently
     
+    if meta.get("skip", False):
+        print(f"[{os.getpid()}] Skipping experiment due to config: experiment.metadata.skip")
+        return {"status": "skipped", "experiment_id": None, "timestamp": None, "telemetry_filepath": None}
 
     algorithm_name = exp_config["algorithm"]["name"]
     algo_params = exp_config["algorithm"]["params"]
@@ -139,10 +199,6 @@ def run_battery_of_experiments(experiment_configs: list, num_cores: int = None, 
         config_filepath: Path to the JSON file containing experiment configurations.
         num_cores: Number of CPU cores to use. Defaults to all available cores.
     """
-    global skip_run_battery_of_experiments 
-    if skip_run_battery_of_experiments:
-        print("Skipping run_battery_of_experiments as per global setting.")
-        return [], results_dir
 
     if num_cores is None:
         num_cores = os.cpu_count()
@@ -216,9 +272,12 @@ def load_experiment(data):
 
 def load_results(results_dir, patt = "*"):
     pth = Path(results_dir)
-    print(pth.absolute())
+    
     paths = list(pth.glob(patt +".json"))
-    print(paths)
+    
+    print(f"loading {len(paths)} files from:", pth.absolute())
+    print(str(paths[0]), "...", sep = "\n")
+
     experiments = ['']*len(paths)
     episodes = []
     for i,p in enumerate(paths):
@@ -232,6 +291,7 @@ def load_results(results_dir, patt = "*"):
         #     print("oops:", p)
     experiments = pd.DataFrame(experiments)
     episodes = pd.concat(episodes)
+    print("done.")
     return experiments, episodes
 
 if __name__ == '__main__':

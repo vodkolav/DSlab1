@@ -102,7 +102,7 @@ class Experiment:
 
 
         if self.telemetry:
-            self.telemetry.record_episode_end(self.algorithm, self.is_training ) # Record episode number
+            self.telemetry.record_episode_end(self.algorithm, self.is_training, terminated, truncated ) # Record episode number
 
         return self.algorithm.terminate_prematurely
 
