@@ -52,6 +52,19 @@ class TelemetryManager:
         self.reset_episode_metrics(0)
 
     @property
+    def verbosity(self):
+        """
+        verbosity level for telemetry reporting. 
+        defined through experiment_config["metadata"]['verbosity']
+        0 = No output, 1 = Minimal output, 2 = Detailed output
+        """
+        if "verbosity" in self.metadata:
+            level = self.metadata["verbosity"]
+            return level
+        else:
+            return 1
+
+    @property
     def total_episodes(self):
         return self.tot_episodes
 
@@ -116,7 +129,9 @@ class TelemetryManager:
 
 
     def report(self, what, newline = False):
-        if newline:
+        if self.verbosity == 0:
+            return
+        if newline and self.verbosity ==2:
             print(what)
         else:
             print(f"\r{what}" , end='')

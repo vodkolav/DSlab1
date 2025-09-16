@@ -1,10 +1,10 @@
 Project Structure
-
+```
 Assignment2/
 ├── algorithms/
 │   ├── __init__.py
 │   ├── base_algorithm.py
-│   ├── dynamic_programming.py # Will be slightly different
+│   ├── dynamic_programming.py 
 │   ├── monte_carlo.py
 │   ├── temporal_difference.py
 │   ├── q_learning.py
@@ -17,3 +17,4 @@ Assignment2/
 └── utils/
     └── __init__.py
     └── policies.py
+```
