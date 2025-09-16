@@ -170,3 +170,4 @@ DSlab2/logs
 
 # ignore .idea folder created by pycharm
 .idea/
+**/secrets.json
