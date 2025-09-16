@@ -41,6 +41,7 @@ class Constants:
     NUM_EVAL_EPISODES: int = 100
     RENDER_EVALUATION: bool = False 
     SKIP: bool = False
+    verbosity: int = 1  # 0: silent, 1: minimal output, 2: detailed output
 
 
 def make_case(C: Constants, algo_name ,alpha, gamma, lambda_, epsilon = ("linear", 1) , theta = 1e-5, ):
@@ -59,6 +60,7 @@ def make_case(C: Constants, algo_name ,alpha, gamma, lambda_, epsilon = ("linear
             "render_evaluation": C.RENDER_EVALUATION,
             "save_ansi_frames": False,
             "telemetry_episodes_limit": 256,
+            "verbosity": C.verbosity, # 0: silent, 1: minimal output, 2: detailed output
             "skip": C.SKIP
         },
         "env": {
@@ -86,10 +88,21 @@ def make_case(C: Constants, algo_name ,alpha, gamma, lambda_, epsilon = ("linear
     return Case
 
 def summary(Cases):
-    jn = pd.json_normalize(Cases)
-    jnu = jn.nunique()
-    cols = jnu.index[jnu > 1].tolist()
-    return jn[cols]
+    if type(Cases) is list:
+        jn = pd.json_normalize(Cases)
+    else:
+        jn = Cases
+    jnu = jn.nunique(dropna=True)
+    cols = jnu[jnu.between(2,7)].index.tolist()
+    print("Variable parameters in Experiments battery:")
+    res = []
+    for c in cols:
+        unq = jn[c].unique()
+        unq.sort()
+        val = " | ".join([str(v) for v  in unq])
+        res.append({"Parameter": c , "Options": val})
+        #print("\n", c, "\n |", val, "|")
+    return pd.DataFrame(res)
 
 
 def run_case(exp_config: dict, output_dir = "data/results") -> dict:

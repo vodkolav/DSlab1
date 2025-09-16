@@ -187,7 +187,7 @@ def plot_Q_evolution(experiment_data,  metric = "pickup"):
     return fig
 
 
-def experiment_timeline(experiments, episodes, sort_param = "gamma"):
+def experiment_timeline(experiments, episodes, sort_param = "gamma", win_len = 50):
     experiments_smol =  experiments.copy() # .drop("strategy", axis=1)
     episodes_smol =  episodes.drop(["internal_state","replay", "info"], axis=1)
     
@@ -200,7 +200,7 @@ def experiment_timeline(experiments, episodes, sort_param = "gamma"):
     avg(reward) OVER (
         PARTITION BY {sort_param}, is_training, exp_id
         ORDER BY i
-        RANGE BETWEEN 50 PRECEDING AND CURRENT ROW
+        RANGE BETWEEN {win_len} PRECEDING AND CURRENT ROW
     ) AS avg_reward, 
 
     sum(reward) OVER (
@@ -212,7 +212,7 @@ def experiment_timeline(experiments, episodes, sort_param = "gamma"):
     avg(length) OVER (
         PARTITION BY {sort_param}, is_training, exp_id
         ORDER BY i
-        RANGE BETWEEN 50 PRECEDING AND CURRENT ROW
+        RANGE BETWEEN {win_len} PRECEDING AND CURRENT ROW
     ) AS avg_length
 
     FROM experiments_smol ex
