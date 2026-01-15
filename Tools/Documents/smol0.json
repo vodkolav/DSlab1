@@ -1,0 +1,556 @@
+{
+  "pandoc-api-version": [
+    1,
+    23,
+    1
+  ],
+  "meta": {},
+  "blocks": [
+    {
+      "t": "Div",
+      "c": [
+        [
+          "",
+          [
+            "paragraph",
+            "normal",
+            "ng-star-inserted"
+          ],
+          [
+            [
+              "_ngcontent-ng-c2528677013",
+              ""
+            ],
+            [
+              "start-index",
+              "773"
+            ]
+          ]
+        ],
+        [
+          {
+            "t": "Plain",
+            "c": [
+              {
+                "t": "Span",
+                "c": [
+                  [
+                    "",
+                    [
+                      "ng-star-inserted"
+                    ],
+                    [
+                      [
+                        "_ngcontent-ng-c2528677013",
+                        ""
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "t": "Str",
+                      "c": "•"
+                    },
+                    {
+                      "t": "Space"
+                    }
+                  ]
+                ]
+              },
+              {
+                "t": "Strong",
+                "c": [
+                  {
+                    "t": "Str",
+                    "c": "Phase"
+                  },
+                  {
+                    "t": "Space"
+                  },
+                  {
+                    "t": "Str",
+                    "c": "Field"
+                  },
+                  {
+                    "t": "Space"
+                  },
+                  {
+                    "t": "Str",
+                    "c": "Parameterization:"
+                  }
+                ]
+              },
+              {
+                "t": "Span",
+                "c": [
+                  [
+                    "",
+                    [
+                      "ng-star-inserted"
+                    ],
+                    [
+                      [
+                        "_ngcontent-ng-c2528677013",
+                        ""
+                      ],
+                      [
+                        "start-index",
+                        "802"
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "t": "SoftBreak"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "Instead"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "of"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "defining"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "a"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "grain"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "using"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "limited"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "geometric"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "parameters"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "(e.g.,"
+                    },
+                    {
+                      "t": "SoftBreak"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "the"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "angle"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "of"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "a"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "star"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "or"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "the"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "radius"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "of"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "a"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "slot),"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "a"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "Feedforward"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "Neural"
+                    },
+                    {
+                      "t": "SoftBreak"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "Network"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "(FNN)"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "can"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "be"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "used"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "to"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "construct"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "a"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "\"phase"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "field\""
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "function."
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "This"
+                    },
+                    {
+                      "t": "SoftBreak"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "function,"
+                    },
+                    {
+                      "t": "Space"
+                    }
+                  ]
+                ]
+              },
+              {
+                "t": "Span",
+                "c": [
+                  [
+                    "",
+                    [
+                      "ng-star-inserted"
+                    ],
+                    [
+                      [
+                        "_ngcontent-ng-c2528677013",
+                        ""
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "t": "Str",
+                      "c": "ϕ(x,y)"
+                    }
+                  ]
+                ]
+              },
+              {
+                "t": "Span",
+                "c": [
+                  [
+                    "",
+                    [
+                      "ng-star-inserted"
+                    ],
+                    [
+                      [
+                        "_ngcontent-ng-c2528677013",
+                        ""
+                      ],
+                      [
+                        "start-index",
+                        "1029"
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "t": "Str",
+                      "c": ","
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "implicitly"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "defines"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "the"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "distribution"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "of"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "the"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "propellant"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "(solid"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "vs."
+                    },
+                    {
+                      "t": "SoftBreak"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "gas"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "cavity)"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "across"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "the"
+                    },
+                    {
+                      "t": "Space"
+                    },
+                    {
+                      "t": "Str",
+                      "c": "domain"
+                    }
+                  ]
+                ]
+              },
+              {
+                "t": "RawInline",
+                "c": [
+                  "markdown",
+                  "[[Reverse Design of Solid Propellant Grain for a Performance-Matching Goal- Shape Optimization via Evolutionary Neural Network - Semantic Scholar|3]]"
+                ]
+              },
+              {
+                "t": "Span",
+                "c": [
+                  [
+                    "",
+                    [
+                      "ng-star-inserted"
+                    ],
+                    [
+                      [
+                        "_ngcontent-ng-c2528677013",
+                        ""
+                      ],
+                      [
+                        "start-index",
+                        "1125"
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "t": "Str",
+                      "c": "."
+                    }
+                  ]
+                ]
+              }
+            ]
+          }
+        ]
+      ]
+    }
+  ]
+}
