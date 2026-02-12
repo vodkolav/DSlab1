@@ -9,9 +9,8 @@ import requests
 import time
 import os
 import pandas as pd
-import kagglehub
 
-import zenodo_get
+
 
 def jload(fn = "secrets.json"):
     with open(fn, 'r') as f:
@@ -23,7 +22,8 @@ def jsave(tree, fn):
         return json.dump(tree, f, indent=2)
     
 
-secrets = jload("secrets.json")
+def secrets(where = "secrets.json"):
+    return jload(where)
 
 # def md_save(df, fn):
 #     mcw = [10] * 5 + [None] + [40,40]
@@ -203,6 +203,7 @@ def download(item):
     dfs = {}
     match item.repository.lower() :
         case "kaggle":
+            import kagglehub
             ds_path = path.replace("/datasets/", "")
             loc_path = kagglehub.dataset_download(ds_path)
             print("downloaded to", loc_path)
@@ -256,6 +257,8 @@ def download(item):
             #     dfs[filename] = pd.read_html(dest)[0]
 
         case "zenodo":
+
+            import zenodo_get
             ds_path = path.replace("/records/", "")            
             loc_path = os.path.expanduser(f"~/.cache/{item.repository.lower()}/{item.citekey}")
             os.makedirs(loc_path, exist_ok=True)

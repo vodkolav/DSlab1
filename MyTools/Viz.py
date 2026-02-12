@@ -5,6 +5,50 @@ import matplotlib.pyplot as plt
 import io
 import base64
 
+def typen(o):
+    # type name
+    return type(o).__name__
+
+def shp(o):
+    # shape or len
+    try:
+        out = o.shape
+    except:
+        out = len(o)
+    return out
+
+def islist(o):
+    # is list-y type
+    return isinstance(o, list) or isinstance(o, np.ndarray)
+
+
+def j_summary(data):
+    print(type(data))
+    out = {}
+    if isinstance(data,dict):
+        for k,v in data.items():
+            if islist(v):
+                # there may be dicts inside
+                out[k] = f"{typen(v)}[{shp(v)}]"
+            elif isinstance(v,dict):
+                out[k] = j_summary(v)
+            else: 
+                out[k] = typen(v)
+
+    elif islist(data):
+        nm = f"{typen(data)}[{shp(data)}]"  
+        lst = []
+        if isinstance(data[0], dict):
+            for itm in data:
+                lst.append(j_summary(itm) )
+            print("er")
+        out[nm] = lst
+    else :
+        out += "I"
+    return out
+
+
+
 
 def create_histogram(data_series):
 
@@ -52,8 +96,7 @@ def create_png_histogram(data_series):
     return imgdata
 
 
-
-def summary(df, hist_fmt = 'base64'):
+def summary(df, hist_fmt = None):
 
     if hist_fmt == 'base64':
         hists = df.apply(lambda row: create_base64_histogram(row), axis=0)
@@ -66,12 +109,19 @@ def summary(df, hist_fmt = 'base64'):
     nonnansPrc = (nonnans / df.shape[0] * 100).apply("{0:.2f}%".format)
     sam1 = df.sample(1, random_state=42).squeeze()
     sam2 = df.sample(1, random_state=495).squeeze()
-    res = pd.DataFrame([sam1.index, df.dtypes.astype(str), nonnans,
-                        nonnansPrc, df.nunique(), hists, sam1, sam2]).transpose()
-    res.columns = ["Column", "data type", "non-null values", 
-                   "non-null values %", "unique values","Hist", "example1", "example2"]
-    
+  
+    res = {
+        "Column": sam1.index, "data type": df.dtypes.astype(str), 
+        "non-null values":nonnans, "non-null values %":nonnansPrc, 
+        "unique values":df.nunique(),
 
+        "example1":sam1, "example2":sam2
+    }
+    
+    if hist_fmt:
+        res["Hist"] = hists 
+
+    res = pd.DataFrame(res)
 
     res.sort_values([ "non-null values","unique values"],ascending=False, inplace=True)
     # let's abuse python's very lascivious OOP system

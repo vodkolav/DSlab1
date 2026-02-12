@@ -9,8 +9,7 @@ from MyTools.DataIO import secrets
 # For local access, you don't need a public API key, but a private one is recommended for write permissions.
 # The `local=True` parameter is crucial for connecting to your local Zotero instance.
 
-
-zs = secrets["zotero"]
+zs = secrets()["zotero"]
 
 USER_ID = zs["USER_ID"]
 API_KEY = zs["API_KEY"]
