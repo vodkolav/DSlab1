@@ -6,9 +6,7 @@ from Dashboard import draw
 from Formulas import parametrize
 from Signature import analyze_function
 
-external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+app = dash.Dash(__name__)
 
 
 
@@ -40,42 +38,15 @@ app.layout = html.Div([
     html.Div([
         # Left pane (70%)
         html.Div([
-            dcc.Graph(id='live-graph', style={'width': '100%', 'height': '100%'})
-        ], style={
-            'flex': '0 0 70%',
-            'padding': '10px',
-            'boxSizing': 'border-box'
-        }),
+            dcc.Graph(id='live-graph')
+        ], className='left-pane'),
         
         # Right pane (30%)
         html.Div([
-            html.Div(controls, style={
-                'display': 'flex',
-                'flexDirection': 'column',
-                'gap': '15px',
-                'padding': '10px'
-            })
-        ], style={
-            'flex': '0 0 30%',
-            'padding': '10px',
-            'boxSizing': 'border-box',
-            'backgroundColor': '#f9f9f9',
-            'borderLeft': '1px solid #ddd',
-            'overflowY': 'auto'
-        })
-    ], style={
-        'display': 'flex',
-        'width': '100%',
-        'height': '100vh',
-        'margin': '0',
-        'padding': '0'
-    })
-], style={
-    'width': '100%',
-    'height': '100%',
-    'margin': '0',
-    'padding': '0'
-})
+            html.Div(controls, className='controls-container')
+        ], className='right-pane')
+    ], className='main-layout')
+], className='app-container')
 
 
 # [   dcc.Graph(id='live-graph'),
@@ -98,12 +69,7 @@ def update_graph(*args):
     formula = parametrize(*args)
 
     fig = draw(formula)
-    # x = np.linspace(0, 10, 100)
-    # # Formula: y = b * sin(a*x)
-    # y = b * np.sin(a * x)
-    
-    # fig = go.Figure(data=[go.Scatter(x=x, y=y, mode='lines')])
-    # fig.update_layout(title=f'Formula: y = {b} * sin({a}*x)')
+    fig.update_layout(template='plotly_dark')
     return fig
 
 if __name__ == '__main__':
