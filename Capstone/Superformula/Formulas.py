@@ -5,7 +5,7 @@ from numpy import pi, sin, cos, arcsin, arccos, sign, abs, floor
 
 
 
-def parametrize(a: float = 5, 
+def formula1(a: float = 5, 
                 b: float = 5, 
                 m: int = 3, 
                 n1: float = 1/2,

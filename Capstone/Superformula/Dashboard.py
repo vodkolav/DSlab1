@@ -7,6 +7,11 @@ from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 import numpy as np
 
+from Formulas import formula1
+from Signature import analyze_function, dec_scale_2
+
+from dash import dcc
+from dash.dependencies import Input, Output
 # Convert between Cartesian/Polar coordinates
 
 def cart2pol(x, y):
@@ -45,3 +50,51 @@ def draw(formula, mode='lines'):
 
     fig.update_layout(width=600 , height = 1000)
     return fig
+
+def init_app():
+    funcparams = analyze_function(formula1)
+
+    parametrizer = emit_parametrizer(formula1, funcparams)
+
+    controls = []
+    inputs = []
+
+    for nm, prm in funcparams.items():
+        lbl, sldr = emit_slider(prm)
+        controls.append(lbl)
+        controls.append(sldr)
+        inputs.append(Input(f'slider-{nm}', 'value'))
+
+    return controls, inputs, parametrizer
+
+
+def emit_slider(p: dict):
+    Desc, Name, Type, Scl, Min, Max, Step, Def = p.values()
+    lbl = dcc.Markdown(f'${Name}$: {Desc}', mathjax=True,)
+
+    if Scl == "Dec":
+        ax, vl = dec_scale_2(Min,Max,Step)
+        markers = {a: f'{v:.3g}'.format(v) for a,v in zip(ax,vl)}
+
+        sldr = dcc.Slider(id=f'slider-{Name}', updatemode='drag',marks= markers,
+                min=Min, max=Max, step=Step, value=Def, 
+                tooltip={"placement": "top", "always_visible": True, "transform": "decScale"})
+    else:
+        sldr = dcc.Slider(id=f'slider-{Name}', updatemode='drag',
+                      min=Min, max=Max, step=Step, value=Def )
+
+    return lbl, sldr
+
+
+def emit_parametrizer(formula, pars):
+
+    def parametrize(*args):
+        args = list(args)
+        for i,(j,k) in enumerate(pars.items()):
+            if k['Scl'] == 'Dec':
+                args[i] = 10 ** args[i]
+        args = tuple(args)
+        funct = formula(*args)
+        return funct
+    
+    return parametrize
