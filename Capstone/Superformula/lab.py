@@ -4,18 +4,30 @@ from dash.dependencies import Input, Output
 
 from Dashboard import draw
 from Formulas import parametrize
-from Signature import analyze_function
+from Signature import analyze_function, dec_scale_2
 
 app = dash.Dash(__name__)
 
 
 
 def emit_slider(p: dict):
-    Desc, Name, Type, Min, Max, Step, Def = p.values()
-    lbl = html.Label(f'{Desc} ({Name})')
-    sldr = dcc.Slider(id=f'slider-{Name}', min=Min, 
-               max=Max, step=Step, value=Def, updatemode='drag')
+    Desc, Name, Type, Scl, Min, Max, Step, Def = p.values()
+    lbl = dcc.Markdown(f'${Name}$: {Desc}', mathjax=True,)
+
+    if Scl == "Dec":
+        ax, vl = dec_scale_2(Min,Max,Step)
+        markers = {a:  f'{v:.3g}'.format(v) for a,v in zip(ax,vl)}
+
+        sldr = dcc.Slider(id=f'slider-{Name}', updatemode='drag',marks= markers,
+                min=Min, max=Max, step=Step, value=Def, 
+                tooltip={"placement": "top", "always_visible": True, "transform": "decScale"})
+    else:
+        sldr = dcc.Slider(id=f'slider-{Name}', updatemode='drag',
+                      min=Min, max=Max, step=Step, value=Def )
+        
     return lbl, sldr
+
+
 
 def init_app():
     funcparams = analyze_function(parametrize)
@@ -49,22 +61,7 @@ app.layout = html.Div([
 ], className='app-container')
 
 
-# [   dcc.Graph(id='live-graph'),
-#     html.Label('Offset (o)'),
-#     dcc.Slider(id='slider-o', min=-10, max=10, step=0.5, value=1, updatemode='drag'),
-#     html.Label('Amplitude (a)'),
-#     dcc.Slider(id='slider-a', min=1, max=10, step=0.1, value=1, updatemode='drag'),
-#     html.Label('Amplitude2 (b)'),
-#     dcc.Slider(id='slider-b', min=1, max=5, step=0.1, value=1, updatemode='drag' )
-# ]
-
-
-@app.callback(Output('live-graph', 'figure'),
-              callbcks)
-            #   [Input('slider-o', 'value'),
-            #    Input('slider-a', 'value'),
-            #    Input('slider-b', 'value')])
-
+@app.callback(Output('live-graph', 'figure'), callbcks)
 def update_graph(*args):
     formula = parametrize(*args)
 
@@ -73,4 +70,4 @@ def update_graph(*args):
     return fig
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run(debug=True)

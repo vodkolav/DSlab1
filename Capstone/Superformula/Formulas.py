@@ -5,31 +5,34 @@ from numpy import pi, sin, cos, arcsin, arccos, sign, abs, floor
 
 
 
-
-def parametrize(o: float = 10, # offset
-                a: float = 5, # amplitude
-                b = 1, # another amplitude
-                m: int = 3, # number of lobes
-                n1 = -1,
-                n2 = 2,
-                n3 = 1/2,
+def parametrize(a: float = 5, 
+                b: float = 5, 
+                m: int = 3, 
+                n1: float = 1/2,
+                n2: float = 2,
+                n3: float = 2,
                 ):
+
     """passes parameters
 
     Args:
-        o (int, optional): Offset. Defaults to 10. Range:[1:10:0.5].
-        n2 (int, optional): _description_. Defaults to 2.
-        n3 (_type_, optional): _description_. Defaults to 1/2.
+        a (float, optional): Amplitude. Defaults to 5. Range:[.5:5:0.5].
+        b (float, optional): Another Amplitude. Defaults to 5. Range:[.5:5:0.5].
+        m (int, optional): number of lobes. Defaults to 3. Range:[0:10:1].
+        n1 (float, optional): Shape parameter 1. Defaults to -1. Range:[0.5:5:0.3].
+        n2 (float, optional): Shape parameter 2. Defaults to 2. Range:[1:3:.1].
+        n3 (float, optional): Shape parameter 3. Defaults to 2. Dec:[-1:3:.01].
     """
+
     def sf(phi):
 
         #l =2.21
 
         # sea star
-        r = o + a * cos(m*phi)
+        #r = o + a * cos(m*phi)
 
         # sunflower
-        k = m*phi/(2*pi)
+        #k = m*phi/(2*pi)
 
         # r = o + a * abs(k - floor(k + 1/2))*2
         #r = abs(k - floor(k + 1/(2)))*2
@@ -51,7 +54,7 @@ def parametrize(o: float = 10, # offset
         #r = a*(( arccos(cos(m*phi+l)) + arcsin(sin(m*phi+l)))/pi +1) + o
 
         # superformula
-        #r = (abs(cos(phi*m/4)/a)**n2 + abs(sin(phi*m/4)/b)**n3 ) ** (-1/n1)
+        r = (abs(cos(phi*m/4)/a)**n2 + abs(sin(phi*m/4)/b)**n3 ) ** (-1/n1)
 
         return r
     return sf

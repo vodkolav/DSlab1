@@ -36,12 +36,12 @@ def draw(formula, mode='lines'):
     
     R = formula(T)
     X, Y = pol2cart(R, T)
-    fig = make_subplots(rows=1, cols=2, subplot_titles=('R vs T', 'Y vs X'))
+    fig = make_subplots(rows=2, cols=1, subplot_titles=('R vs T', 'Y vs X'))
 
     fig.add_trace(go.Scatter(x=X, y=Y, mode=mode, name='Y(X)'), row=1, col=1)
-    fig.add_trace(go.Scatter(x=T, y=R, mode=mode, name='R(T)'), row=1, col=2)
+    fig.add_trace(go.Scatter(x=T, y=R, mode=mode, name='R(T)'), row=2, col=1)
 
     fig.update_yaxes(title_text='Y', row=1, col=1, scaleanchor = 'x', scaleratio=1)
 
-    fig.update_layout(width=1000 , height = 600)
+    fig.update_layout(width=600 , height = 1000)
     return fig

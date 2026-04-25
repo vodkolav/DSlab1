@@ -2,7 +2,7 @@
 
 :root {
     --bg-dark: #1a1a1a;
-    --bg-secondary: #2d2d2d;
+    --bg-secondary: #3a3939;
     --border-color: #404040;
     --text-primary: #e0e0e0;
     --text-secondary: #b0b0b0;
@@ -86,22 +86,64 @@ label {
     margin: 10px 0;
 }
 
-.rc-slider-track {
+.dash-slider-track {
     background-color: var(--accent) !important;
 }
 
-.rc-slider-rail {
+.dash-slider-rail {
     background-color: var(--border-color) !important;
 }
 
-.rc-slider-handle {
+.dash-slider-handle {
     border-color: var(--accent) !important;
     background-color: var(--accent) !important;
 }
 
-.rc-slider-handle:hover,
-.rc-slider-handle:focus {
+.dash-slider-handle:hover,
+.dash-slider-handle:focus {
     box-shadow: 0 0 5px var(--accent) !important;
+}
+
+/* Slider marks - rotated text */
+.dash-slider-mark {
+    transform: rotate(-45deg);
+    transform-origin: center;
+    white-space: nowrap;
+    color: var(--text-primary) !important;
+    font-size: 12px;
+}
+
+.dash-slider-mark:before {
+    background-color: var(--text-primary)
+}
+
+/* Slider tooltip */
+.dash-slider-tooltip {
+    background-color: var(--accent) !important;
+    border-color: var(--accent) !important;
+}
+
+.dash-slider-tooltip-inner {
+    color: var(--bg-dark) !important;
+    background-color: var(--accent) !important;
+    border-color: var(--accent) !important;
+}
+
+.dash-slider-tooltip-placement-top .dash-slider-tooltip-inner::after {
+    border-top-color: var(--accent) !important;
+}
+
+
+/* Slider input text color */
+.dash-range-slider-input {
+    color: var(--text-primary) !important;
+    background-color: var(--bg-dark) !important;
+    border-color: var(--border-color) !important;
+}
+
+.dash-slider-input:focus {
+    outline-color: var(--accent) !important;
+    border-color: var(--accent) !important;
 }
 
 /* Plotly dark theme adjustments */
