@@ -42,10 +42,12 @@ body {
 /* Left pane (70%) - Graph */
 .left-pane {
     flex: 0 0 70%;
-    padding: 15px;
+    padding: 0;
     box-sizing: border-box;
     background-color: var(--bg-dark);
     border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
 }
 
 .left-pane .plotly-graph-div {
@@ -144,6 +146,84 @@ label {
 .dash-slider-input:focus {
     outline-color: var(--accent) !important;
     border-color: var(--accent) !important;
+}
+
+/* Parameter table and download section */
+.top-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 12px;
+}
+
+.table-download-container {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.params-table {
+    flex: 1;
+    font-size: 13px;
+    margin: 0;
+}
+
+.params-table table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.params-table th,
+.params-table td {
+    padding: 8px 10px;
+    text-align: center;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    word-break: break-word;
+}
+
+.params-table th {
+    background-color: var(--bg-secondary);
+    font-weight: 600;
+    color: var(--accent);
+}
+
+.params-table td {
+    background-color: rgba(77, 77, 77, 0.3);
+    font-family: 'Courier New', monospace;
+}
+
+.download-btn {
+    padding: 8px 12px;
+    background-color: var(--accent);
+    color: var(--bg-dark);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 12px;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+    height: fit-content;
+}
+
+.download-btn:hover {
+    background-color: #e69d33;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(204, 133, 25, 0.3);
+}
+
+.download-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(204, 133, 25, 0.2);
+}
+
+.graph-container {
+    flex: 1;
+    min-height: 0;
 }
 
 /* Plotly dark theme adjustments */

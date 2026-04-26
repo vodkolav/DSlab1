@@ -1,37 +1,76 @@
 import dash
 from dash import dcc, html
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State
 
-from Dashboard import draw, init_app
+
+from Dashboard import DashboardManager #draw, init_app
 
 app = dash.Dash(__name__)
 
 
 
-controls, inputs, parametrize = init_app()
+#controls, inputs, parametrize = init_app()
+
+DM = DashboardManager()
+
+# Extract parameter names for table header
+#param_names = list(inputs.keys()) if hasattr(inputs, 'keys') else []
 
 app.layout = html.Div([
     html.Div([
         # Left pane (70%)
-        html.Div([
-            dcc.Graph(id='live-graph')
+        html.Div([            
+            # Graph
+            dcc.Graph(id='live-graph', className='graph-container')
         ], className='left-pane'),
         
         # Right pane (30%)
         html.Div([
-            html.Div(controls, className='controls-container')
+            # Parameter table with download button
+            html.Div([
+                html.Div([
+                    dcc.Markdown(id='params-table', className='params-table'),
+                    html.Button('⬇ Download Graph', id='download-btn', className='download-btn'),
+                ], className='table-download-container'),
+                dcc.Download(id='download-image')
+            ], className='top-section'),
+            html.Div(DM.controls, className='controls-container')
         ], className='right-pane')
     ], className='main-layout')
 ], className='app-container')
 
 
-@app.callback(Output('live-graph', 'figure'), inputs)
+@app.callback(Output('live-graph', 'figure'), DM.inputs)
 def update_graph(*args):
-    formula = parametrize(*args)
+    formula = DM.parametrize(*args)
 
-    fig = draw(formula)
+    fig = DM.draw(formula)
     fig.update_layout(template='plotly_dark')
     return fig
+
+
+@app.callback(
+    Output('params-table', 'children'),
+    DM.inputs
+)
+def update_table(*args):
+    return DM.update_table(*args)
+
+
+
+@app.callback(
+    Output('download-image', 'data'),
+    Input('download-btn', 'n_clicks'),
+    State('live-graph', 'figure'),
+    prevent_initial_call=True
+)
+def download_graph(n_clicks, figure):
+    """Download graph as image with parameters in filename"""
+    if n_clicks is None or figure is None:
+        return None
+    data =  DM.download_graph(figure)
+    return dcc.send_bytes(src = data['content'], filename=data['filename'])
+    
 
 if __name__ == '__main__':
     app.run(debug=True)

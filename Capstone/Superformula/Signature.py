@@ -27,9 +27,12 @@ def treat_param(prm: inspect.Parameter, doc: DocstringParam ):
     #print(spl)
     Scl, Min, Max, Step = spl[0]
 
+    # Deft = 10 ** prm.default if Scl == "Dec" else prm.default
+    Deft  = prm.default
+
     p = {
     "Desc": Desc, "Name":prm.name, "Type": Type, "Scl": Scl,
-    "Min":float(Min), "Max":float(Max), "Step":float(Step), "Deflt": prm.default
+    "Min":float(Min), "Max":float(Max), "Step":float(Step), "Deflt": Deft
     }
     return p
 
