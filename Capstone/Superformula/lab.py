@@ -26,14 +26,19 @@ app.layout = html.Div([
         
         # Right pane (30%)
         html.Div([
-            # Parameter table with download button
+            # Top section with buttons and parameter table
             html.Div([
+                # Buttons pane
                 html.Div([
-                    dcc.Markdown(id='params-table', className='params-table'),
                     html.Button('⬇ Download Graph', id='download-btn', className='download-btn'),
-                ], className='table-download-container'),
+                ], className='buttons-pane'),
+                
+                # Parameter table
+                dcc.Markdown(id='params-table', className='params-table', mathjax=True),
                 dcc.Download(id='download-image')
             ], className='top-section'),
+            
+            # Controls
             html.Div(DM.controls, className='controls-container')
         ], className='right-pane')
     ], className='main-layout')

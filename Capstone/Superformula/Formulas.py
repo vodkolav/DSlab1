@@ -9,9 +9,9 @@ def formula1(funcname:str = "superformula",
                 m: int = 3,
                 a: float = 1, 
                 b: float = 1, 
-                n1: float = 0.7,
-                n2: float = 2,
-                n3: float = 2,
+                n_1: float = 0.7,
+                n_2: float = 2,
+                n_3: float = 2,
                 ):
 
     """passes parameters
@@ -21,9 +21,9 @@ def formula1(funcname:str = "superformula",
         m (int, optional): number of lobes. Defaults to 3. Range:[0:10:.1].
         a (float, optional): Amplitude. Defaults to 1. Range:[.5:10:0.5].
         b (float, optional): Another Amplitude. Defaults to 1. Range:[.5:10:0.5].
-        n1 (float, optional): Shape parameter 1. Defaults to -1. Dec:[-1:3:0.01].
-        n2 (float, optional): Shape parameter 2. Defaults to 2. Dec:[-1:3:.01].
-        n3 (float, optional): Shape parameter 3. Defaults to 2. Dec:[-1:3:.01].
+        n_1 (float, optional): Shape parameter 1. Defaults to -1. Dec:[-1:3:0.01].
+        n_2 (float, optional): Shape parameter 2. Defaults to 2. Dec:[-1:3:.01].
+        n_3 (float, optional): Shape parameter 3. Defaults to 2. Dec:[-1:3:.01].
     """
     l = 3 # l is the horizontal transition
     o = 1 # o is the vertical transition (offset)
@@ -40,7 +40,7 @@ def formula1(funcname:str = "superformula",
 
     "trapez wave" : lambda phi: o + a * ((arccos(cos(m*phi+l)) + arcsin(sin(m*phi+l)))/pi +1) ,
 
-    "superformula": lambda phi: (abs(cos(phi*m/4)/a)**n2 + abs(sin(phi*m/4)/b)**n3 ) ** (-1/n1)
+    "superformula": lambda phi: (abs(cos(phi*m/4)/a)**n_2 + abs(sin(phi*m/4)/b)**n_3 ) ** (-1/n_1)
 
     }
 

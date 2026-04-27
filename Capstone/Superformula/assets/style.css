@@ -148,6 +148,71 @@ label {
     border-color: var(--accent) !important;
 }
 
+/* Dropdown styling */
+.dash-dropdown {
+    margin: 10px 0;
+}
+
+/* Target all dropdown related elements */
+[class*="dropdown"] {
+    background-color: var(--bg-dark) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Dropdown wrapper */
+.Select {
+    background-color: var(--bg-dark) !important;
+    border-color: var(--border-color) !important;
+}
+
+.Select-control {
+    background-color: var(--bg-dark) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+.Select-value {
+    color: var(--text-primary) !important;
+}
+
+.Select-input input {
+    background-color: var(--bg-dark) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Dropdown menu */
+.Select-menu-outer {
+    background-color: var(--bg-secondary) !important;
+    border-color: var(--border-color) !important;
+}
+
+.Select-option {
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    padding: 8px 12px !important;
+}
+
+.Select-option:hover {
+    background-color: var(--border-color) !important;
+    color: var(--accent) !important;
+}
+
+.Select-option.is-selected {
+    background-color: var(--accent) !important;
+    color: var(--bg-dark) !important;
+}
+
+.Select-option.is-focused {
+    background-color: var(--border-color) !important;
+    color: var(--accent) !important;
+}
+
+.Select-control:focus,
+.Select-control.is-focused {
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.1) !important;
+}
+
 /* Parameter table and download section */
 .top-section {
     display: flex;
@@ -158,22 +223,23 @@ label {
     margin-bottom: 12px;
 }
 
-.table-download-container {
+.buttons-pane {
     display: flex;
-    gap: 12px;
-    align-items: flex-start;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
 }
 
 .params-table {
     flex: 1;
-    font-size: 13px;
+    font-size: 17px;
     margin: 0;
 }
 
 .params-table table {
     width: 100%;
     border-collapse: collapse;
-    table-layout: fixed;
+    table-layout: auto;
 }
 
 .params-table th,

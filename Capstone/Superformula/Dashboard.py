@@ -89,7 +89,7 @@ class DashboardManager:
         lbl = dcc.Markdown(f'${Name}$: {Desc}', mathjax=True,)
 
         if Scl == "Choice":
-            sldr = dcc.Dropdown(id=f'dropdown-{Name}', options=Opts, value = Def, clearable=False )
+            sldr = dcc.Dropdown(id=f'dropdown-{Name}', options=Opts, value = Def, clearable=False, searchable=False )
             inpt = Input(f'dropdown-{Name}', 'value')
 
         elif Scl == "Dec":
@@ -128,7 +128,7 @@ class DashboardManager:
         args = self.transform_args(args)
         """Update parameter table with current values (markdown format)"""
         # Get parameter names and values
-        param_names = [v['Name'] for k,v  in self.funcparams.items()]
+        param_names = [f"${v['Name']}$" for k,v  in self.funcparams.items()]
         #param_names = [ipt.component_id for ipt in inputs]
         
         # Build markdown table
