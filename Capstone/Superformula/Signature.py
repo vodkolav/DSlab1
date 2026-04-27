@@ -31,7 +31,7 @@ def treat_param(prm: inspect.Parameter, doc: DocstringParam ):
     Deft  = prm.default
 
     p = {
-    "Desc": Desc, "Name":prm.name, "Type": Type, "Scl": Scl,
+    "Desc": Desc, "Name":prm.name, "Type": Type, "Scl": Scl, "Opts": None,
     "Min":float(Min), "Max":float(Max), "Step":float(Step), "Deflt": Deft
     }
     return p
@@ -81,9 +81,12 @@ def analyze_function(thefunc):
     for param in signs.parameters.values():
         name = param.name
         doc = docs.get(name,None)
-        pars[param.name] = treat_param(param, doc)
+        p = treat_param(param, doc)
+
+        if p["Scl"] == "Choice":
+            p["Opts"] = thefunc(funcname=None)
+
+        pars[param.name] = p
 
     return pars
-
-#funcparams = analyze_function(parametrize)
 

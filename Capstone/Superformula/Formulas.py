@@ -5,7 +5,8 @@ from numpy import pi, sin, cos, arcsin, arccos, sign, abs, floor
 
 
 
-def formula1(m: int = 3,
+def formula1(funcname:str = "superformula",
+                m: int = 3,
                 a: float = 1, 
                 b: float = 1, 
                 n1: float = 0.7,
@@ -16,6 +17,7 @@ def formula1(m: int = 3,
     """passes parameters
 
     Args:
+        funcname (str, optional): Function name. Defaults to superformula. Choice:[0:0:0].
         m (int, optional): number of lobes. Defaults to 3. Range:[0:10:.1].
         a (float, optional): Amplitude. Defaults to 1. Range:[.5:10:0.5].
         b (float, optional): Another Amplitude. Defaults to 1. Range:[.5:10:0.5].
@@ -23,39 +25,37 @@ def formula1(m: int = 3,
         n2 (float, optional): Shape parameter 2. Defaults to 2. Dec:[-1:3:.01].
         n3 (float, optional): Shape parameter 3. Defaults to 2. Dec:[-1:3:.01].
     """
+    l = 3 # l is the horizontal transition
+    o = 1 # o is the vertical transition (offset)
 
-    def sf(phi):
+    selection = {
+    
+    "rombus?"     : lambda phi: a / (cos(pi*m/4 - (phi % (2*pi*m/4)))),
 
-        #l =2.21
+    "sea star"    : lambda phi: o + a * cos(m*phi),
 
-        # sea star
-        #r = o + a * cos(m*phi)
+    "sunflower"   : lambda phi: o + a * abs(m*phi/(2*pi) - floor(m*phi/(2*pi) + 1/2))*2 ,
 
-        # sunflower
-        #k = m*phi/(2*pi)
+    "risingsun"   : lambda phi: o + a * sign(sin(m*phi))+1 ,
 
-        # r = o + a * abs(k - floor(k + 1/2))*2
-        #r = abs(k - floor(k + 1/(2)))*2
+    "trapez wave" : lambda phi: o + a * ((arccos(cos(m*phi+l)) + arcsin(sin(m*phi+l)))/pi +1) ,
 
+    "superformula": lambda phi: (abs(cos(phi*m/4)/a)**n2 + abs(sin(phi*m/4)/b)**n3 ) ** (-1/n1)
 
-        #rombus? 
-        #r = 10 / (cos(pi/4 - (phi % (pi/2))))
+    }
 
-        # risingsun
-        p =  m # period
-        #r = o + a * sign(sin(p*phi))+1
+    # mod = 1
+    #mod = lambda phi : abs(cos(phi*m))
+    #r = mod(r)
+    
+    if funcname is None or funcname not in selection.keys():
+        # return all available options of the funcname
+        return list(selection.keys())
 
-        # trapez wave
-        #p = 1/m # p is the period
+    chosen = selection[funcname]
 
-        l = 3 # l is the horizontal transition
-        c = 0 # c is the vertical transition
-        #r = a*(( arccos(cos(m*phi+l)) + arcsin(sin(m*phi+l)))/pi +1) + o
+    def func(phi):
 
-        # mod = 1
-        mod = lambda phi : abs(cos(phi*m))
-        # superformula
-        r = (abs(cos(phi*m/4)/a)**n2 + abs(sin(phi*m/4)/b)**n3 ) ** (-1/n1)
-        r = mod(r)
+        r = chosen(phi)
         return r
-    return sf
+    return func

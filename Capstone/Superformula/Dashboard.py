@@ -34,6 +34,13 @@ def rad2deg(rad):
     # convert radians to degrees
     return rad * 180 / np.pi
 
+def fmt(val):
+    if isinstance(val, float):
+        return f'{val:.3g}' 
+    elif isinstance(val,str):
+        return val
+    else:
+        return str(val)
 
 n = 1000
 
@@ -71,28 +78,34 @@ class DashboardManager:
         self.inputs = []
 
         for nm, prm in self.funcparams.items():
-            lbl, sldr = self.emit_slider(prm)
+            lbl, sldr, inpt = self.emit_control(prm)
             self.controls.append(lbl)
             self.controls.append(sldr)
-            self.inputs.append(Input(f'slider-{nm}', 'value'))
+            self.inputs.append(inpt)
 
         #return controls, inputs, parametrizer
-    def emit_slider(self, p: dict):
-        Desc, Name, Type, Scl, Min, Max, Step, Def = p.values()
+    def emit_control(self, p: dict):
+        Desc, Name, Type, Scl, Opts, Min, Max, Step, Def = p.values()
         lbl = dcc.Markdown(f'${Name}$: {Desc}', mathjax=True,)
 
-        if Scl == "Dec":
+        if Scl == "Choice":
+            sldr = dcc.Dropdown(id=f'dropdown-{Name}', options=Opts, value = Def, clearable=False )
+            inpt = Input(f'dropdown-{Name}', 'value')
+
+        elif Scl == "Dec":
             ax, vl = dec_scale_2(Min,Max,Step)
             markers = {a: f'{v:.3g}'.format(v) for a,v in zip(ax,vl)}
 
             sldr = dcc.Slider(id=f'slider-{Name}', updatemode='mouseup',marks= markers,
                     min=Min, max=Max, step=Step, value=Def, 
                     tooltip={"placement": "top", "always_visible": True, "transform": "decScale"})
+            inpt = Input(f'slider-{Name}', 'value')
         else:
             sldr = dcc.Slider(id=f'slider-{Name}', updatemode='mouseup',
                         min=Min, max=Max, step=Step, value=Def )
+            inpt = Input(f'slider-{Name}', 'value')
 
-        return lbl, sldr
+        return lbl, sldr, inpt
 
 
 
@@ -121,7 +134,7 @@ class DashboardManager:
         # Build markdown table
         header = '| ' + ' | '.join(param_names) + ' |'
         separator = '|' + '|'.join(['---'] * len(param_names)) + '|'
-        values = '| ' + ' | '.join([f'{value:.3g}' for value in args]) + ' |'
+        values = '| ' + ' | '.join([fmt(value) for value in args]) + ' |'
         
         markdown_table = f"{header}\n{separator}\n{values}"
         return markdown_table
@@ -133,7 +146,7 @@ class DashboardManager:
         try:
             # Get parameter names and values
             param_names = [v['Name'] for k,v  in self.funcparams.items()]
-            param_str = '_'.join([f'{name}={val:.2g}' for name, val in zip(param_names, self.lastArgs)])
+            param_str = '_'.join([f'{name}={fmt(val)}' for name, val in zip(param_names, self.lastArgs)])
             
             # Create filename with timestamp and parameters
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
