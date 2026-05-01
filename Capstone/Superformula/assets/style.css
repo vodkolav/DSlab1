@@ -108,15 +108,22 @@ label {
 
 /* Slider marks - rotated text */
 .dash-slider-mark {
-    transform: rotate(-45deg);
-    transform-origin: center;
+    transform: rotate(30deg)  !important;
+    transform-origin: top left;
+
+    align-content: start;
     white-space: nowrap;
     color: var(--text-primary) !important;
     font-size: 12px;
 }
 
 .dash-slider-mark:before {
-    background-color: var(--text-primary)
+    transform: translateX(-100%) rotate(-30deg)    !important;
+    transform-origin: top left;
+    background-color: var(--text-primary);
+    left: 0%;
+    width: 3px;
+    height: 6px;
 }
 
 /* Slider tooltip */

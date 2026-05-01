@@ -68,6 +68,51 @@ def dec_scale_2(min,max,step):
     return ass, bss
 
 
+def dec_scale_3(mn, mx, num):
+    s = np.sign(mn)
+    lmin = np.log10(np.abs(mn)) if mn != 0 else 0
+    lmax = np.log10(np.abs(mx)) if mx != 0 else 0
+    ax, stp = np.linspace(s * lmin, lmax, num=num, retstep=True)
+    sg = np.sign(ax)
+    # val = sg * (10 ** np.abs(ax))
+    val = 10 ** ax
+    return ax, val
+
+
+def to_si(val, precision=2):
+    ans = 0
+    if val == 0: 
+        return "0"
+        
+
+    # Standard SI prefixes (10^3, 10^6, 10^9, etc.)
+    prefixes = ["n", "μ", "m", "", "k", "M", "G", "T", "P", "E", "Z", "Y"]
+    #    array([-3., -2., -1., 0.,  1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.])
+    powers   = np.arange(-3.0, 9.0) 
+    #powers[2] = 0
+
+    s = int(np.floor(np.log10(abs(val))))
+    # Calculate which index in 'prefixes' to use
+    j = int(np.floor(np.log10(abs(val)) / 3))
+    # print(i)
+    # i = np.max([0, np.min([j, len(prefixes) - 1])]) # stay within bounds
+    i = np.where(powers==j)[0][0] if j in powers else 1
+
+    #idx = np.where(powers==j)
+    # idx = i
+    # print(i)
+    idx = 3 if s in [-1,] else i
+    scaled = val / (1000 ** powers[idx])
+    # print(s)
+    # Format with chosen precision and strip trailing zeros
+    fmt = f"{scaled:2.1f}"
+    # print(s, i, fmt)
+    ans = fmt.rstrip('0').rstrip('.') + prefixes[idx]
+    #return ans
+    full = f"{val:.10f}"
+
+    return ans
+
 def analyze_function(thefunc):
 
     signs = inspect.signature(thefunc)

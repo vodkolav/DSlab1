@@ -6,5 +6,5 @@ window.dccFunctions.temperatureInCelsius = function(value) {
 }
 
 window.dccFunctions.decScale = function(value) {
-     return (10 ** value).toFixed(2);
+     return (10 ** value).toFixed(3);
 }

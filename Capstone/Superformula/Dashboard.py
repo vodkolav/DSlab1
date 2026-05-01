@@ -7,8 +7,8 @@ from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 import numpy as np
 
-from Formulas import formula1
-from Signature import analyze_function, dec_scale_2
+from Formulas import formula1, formula2
+from Signature import analyze_function, dec_scale_2, dec_scale_3, to_si
 
 from dash import dcc
 from dash.dependencies import Input, Output
@@ -68,7 +68,7 @@ class DashboardManager:
 
     def __init__(self):
 
-        self.formula = formula1
+        self.formula = formula2
 
         self.funcparams = analyze_function(self.formula)
 
@@ -93,11 +93,11 @@ class DashboardManager:
             inpt = Input(f'dropdown-{Name}', 'value')
 
         elif Scl == "Dec":
-            ax, vl = dec_scale_2(Min,Max,Step)
-            markers = {a: f'{v:.3g}'.format(v) for a,v in zip(ax,vl)}
+            ax, vl = dec_scale_3(Min,Max,20)
+            markers = {a: to_si(v) for a,v in zip(ax,vl)}
 
             sldr = dcc.Slider(id=f'slider-{Name}', updatemode='mouseup',marks= markers,
-                    min=Min, max=Max, step=Step, value=Def, 
+                    min=ax[0], max=ax[-1], step=Step, value=Def, 
                     tooltip={"placement": "top", "always_visible": True, "transform": "decScale"})
             inpt = Input(f'slider-{Name}', 'value')
         else:
