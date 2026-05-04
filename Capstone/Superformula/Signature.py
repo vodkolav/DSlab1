@@ -6,6 +6,16 @@ import re
 import numpy as np
 
 def treat_param(prm: inspect.Parameter, doc: DocstringParam ):
+    """Extract all available information on a parameter via inspect and docstring 
+
+    Args:
+        prm (inspect.Parameter): the inspect object for param
+        doc (DocstringParam): the docstring object for param
+
+    Returns:
+        dict: extracted information
+    """
+
     if doc is None:
         Desc, Deft, Rng = "N/A", "1", " Range:[0:1:0.1]" #description, default value, default range
     else:
@@ -68,7 +78,19 @@ def dec_scale_2(min,max,step):
     return ass, bss
 
 
-def dec_scale_3(mn, mx, num):
+def exp_scale(mn, mx, num):
+    """Produces an exponentially scaled axis for the slider control.
+        When you need to control a variable with possible values in a wide range of orders of magnitude.
+        e.g.  0.0001 < x < 10000
+
+    Args:
+        mn (float): minimal value of the scale. also defines minimal order of magnitude 
+        mx (float): maximal value of the scale. also defines maximal order of magnitude
+        num (int): the amount of marks to produce
+
+    Returns:
+        float, float: ax - the linear values for the slider; val - the exponential values for the parameter
+    """
     s = np.sign(mn)
     lmin = np.log10(np.abs(mn)) if mn != 0 else 0
     lmax = np.log10(np.abs(mx)) if mx != 0 else 0
@@ -80,6 +102,15 @@ def dec_scale_3(mn, mx, num):
 
 
 def to_si(val, precision=2):
+    """Format floats of wide range of orders of magnitudes to be human readable and compact
+
+    Args:
+        val (float): the value to format
+        precision (int, optional): unused. Defaults to 2.
+
+    Returns:
+        str: the formatted string representation
+    """
     ans = 0
     if val == 0: 
         return "0"
@@ -114,7 +145,14 @@ def to_si(val, precision=2):
     return ans
 
 def analyze_function(thefunc):
+    """Extract all available information on parameters of thefunc via inspect and docstring 
 
+    Args:
+        thefunc (callable): the function to be analyzed
+
+    Returns:
+        dict: the extractred information on the params
+    """
     signs = inspect.signature(thefunc)
 
     # Parse the docstring

@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 import numpy as np
 
 from Formulas import formula1, formula2
-from Signature import analyze_function, dec_scale_2, dec_scale_3, to_si
+from Signature import analyze_function, dec_scale_2, exp_scale, to_si
 
 from dash import dcc
 from dash.dependencies import Input, Output
@@ -53,6 +53,7 @@ class DashboardManager:
     def draw(self, formula, mode='lines'):
         
         R = formula(T)
+        Rmax = np.max(R) # makes plot ranges invariant to rotations
         X, Y = pol2cart(R, T)
         fig = make_subplots(rows=2, cols=1, subplot_titles=('R vs T', 'Y vs X'))
 
@@ -61,7 +62,7 @@ class DashboardManager:
 
         fig.update_yaxes(title_text='Y', row=1, col=1, scaleanchor = 'x', scaleratio=1)
 
-        fig.update_layout(width=600 , height = 1000)
+        fig.update_layout(width=600 , height = 1000, yaxis_range = [-Rmax, Rmax], xaxis_range = [-Rmax, Rmax])
         return fig
 
 
@@ -92,8 +93,8 @@ class DashboardManager:
             sldr = dcc.Dropdown(id=f'dropdown-{Name}', options=Opts, value = Def, clearable=False, searchable=False )
             inpt = Input(f'dropdown-{Name}', 'value')
 
-        elif Scl == "Dec":
-            ax, vl = dec_scale_3(Min,Max,20)
+        elif Scl == "Exp":
+            ax, vl = exp_scale(Min,Max,20)
             markers = {a: to_si(v) for a,v in zip(ax,vl)}
 
             sldr = dcc.Slider(id=f'slider-{Name}', updatemode='mouseup',marks= markers,
