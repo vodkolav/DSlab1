@@ -31,6 +31,7 @@ app.layout = html.Div([
                 # Buttons pane
                 html.Div([
                     html.Button('⬇ Download Graph', id='download-btn', className='download-btn'),
+                    dcc.Clipboard(id="copy_args", style={"fontSize":20}),
                 ], className='buttons-pane'),
                 
                 # Parameter table
@@ -76,6 +77,16 @@ def download_graph(n_clicks, figure):
     data =  DM.download_graph(figure)
     return dcc.send_bytes(src = data['content'], filename=data['filename'])
     
+
+@app.callback(
+    Output("copy_args", "content"),
+    Input("copy_args", "n_clicks"),
+    prevent_initial_call=True
+    #State("table_cb", "rowData"),
+)
+def copy_args(_):
+    return DM.lastArgs.__repr__()
+
 
 if __name__ == '__main__':
     app.run(debug=True)
