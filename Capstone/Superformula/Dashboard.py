@@ -49,25 +49,47 @@ T = np.linspace(1, np.pi*2 +1 , n)
 
 class DashboardManager:
 
+    @property 
+    def settings(self):
+        return self._settings
+
+    @settings.setter
+    def settings(self, key, val):
+        self._settings[key] = val
+
+
+    def conf(self, key):
+        # val = self.settings(key)
+        (r,c) = (2,1) if self.settings["graph.orientation"] == "vertical" else (1,2)
+        (w,h) = (600, 800) if self.settings["graph.orientation"] == "vertical" else (800, 600)
+        match key:
+            case "subplots":
+                return {"rows": r, "cols": c, }
+            case "trace2":
+                return {"row": r, "col": c, }
+            case "layout":
+                return {"width": w, "height": h}
 
     def draw(self, formula, mode='lines'):
         
         R = formula(T)
         Rmax = np.max(R) # makes plot ranges invariant to rotations
         X, Y = pol2cart(R, T)
-        fig = make_subplots(rows=2, cols=1, subplot_titles=('R vs T', 'Y vs X'))
+        fig = make_subplots(subplot_titles=('R vs T', 'Y vs X'), **self.conf("subplots"))
 
         fig.add_trace(go.Scatter(x=X, y=Y, mode=mode, name='Y(X)'), row=1, col=1)
-        fig.add_trace(go.Scatter(x=T, y=R, mode=mode, name='R(T)'), row=2, col=1)
+        fig.add_trace(go.Scatter(x=T, y=R, mode=mode, name='R(T)'), **self.conf("trace2"))
 
         fig.update_yaxes(title_text='Y', row=1, col=1, scaleanchor = 'x', scaleratio=1)
 
-        fig.update_layout(width=600 , height = 1000, yaxis_range = [-Rmax, Rmax], xaxis_range = [-Rmax, Rmax])
+        fig.update_layout(yaxis_range = [-Rmax, Rmax], xaxis_range = [-Rmax, Rmax], **self.conf("layout"))
         return fig
 
 
 
-    def __init__(self):
+    def __init__(self, settings = None):
+
+        self._settings = {"graph.orientation": "horizontal"}
 
         self.formula = formula2
 
@@ -98,7 +120,7 @@ class DashboardManager:
             markers = {a: to_si(v) for a,v in zip(ax,vl)}
 
             sldr = dcc.Slider(id=f'slider-{Name}', updatemode='mouseup',marks= markers,
-                    min=ax[0], max=ax[-1], step=Step, value=Def, 
+                    min=ax[0], max=ax[-1], step=Step, value=Def,
                     tooltip={"placement": "top", "always_visible": True, "transform": "decScale"})
             inpt = Input(f'slider-{Name}', 'value')
         else:

@@ -47,7 +47,7 @@ def formula1(funcname:str = "superformula",
 
     "abs"         : lambda phi: abs(m*phi/(2*pi)) + s,  
 
-    "rombus?"     : lambda phi: a / (cos(pi*m/4 - 2*((s + phi) % (pi*m/4)))),
+    "rombus?"     : lambda phi: a / (cos(pi*m/4 - ((s + phi) % (2*pi*m/4)))),
 
     "sea star"    : lambda phi: a/2 * (cos(m*phi) + 1),
 
@@ -99,7 +99,7 @@ def formula2(funcname:str = "superformula",
 
     Args:
         funcname (str, optional): Function name. Defaults to superformula. Choice:[0:0:0].
-        m (int, optional): number of lobes. Defaults to 3. Range:[0:10:.1].
+        m (int, optional): number of lobes. Defaults to 3. Range:[0:20:.1].
         a (float, optional): Amplitude. Defaults to 1. Range:[.5:10:0.5].
         n_1 (float, optional): Shape parameter 1. Defaults to -1. Exp:[0.01:1000:0.01].
         n_2 (float, optional): Shape parameter 2. Defaults to 2. Exp:[0.01:1000:.01].
