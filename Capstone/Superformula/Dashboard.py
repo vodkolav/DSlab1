@@ -5,6 +5,7 @@
 
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
+import plotly
 import numpy as np
 
 from Formulas import formula1, formula2
@@ -15,6 +16,14 @@ from dash.dependencies import Input, Output
 # Convert between Cartesian/Polar coordinates
 
 from datetime import datetime
+
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+plotly.io.json.config.default_engine = 'json'
+# this dashboard does not work with orjson for some reason.
+# TODO: investigate and fix this, as orjson is much faster than the default json engine.
 
 def cart2pol(x, y):
     rho = np.sqrt(x**2 + y**2)
@@ -97,6 +106,8 @@ class DashboardManager:
 
         #self.parametrizer = self.emit_parametrizer(self.formula, self.funcparams)
 
+        self.lastArgs = {}
+
         self.controls = []
         self.inputs = []
 
@@ -135,7 +146,7 @@ class DashboardManager:
     def transform_args(self, args):
         args = list(args)
         for i,(j,k) in enumerate(self.funcparams.items()):
-            if k['Scl'] == 'Dec':
+            if k['Scl'] == 'Exp':
                 args[i] = 10 ** args[i]
         args = tuple(args)
         return args
@@ -181,5 +192,5 @@ class DashboardManager:
             
             return dict(content=image_bytes, filename=filename)
         except Exception as e:
-            print(f'Error downloading image: {e}')
+            logger.error(f'Error downloading image: {e}')
             return None
