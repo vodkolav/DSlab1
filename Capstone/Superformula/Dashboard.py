@@ -1,8 +1,4 @@
 
-
-
-
-
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 import plotly
@@ -10,6 +6,7 @@ import numpy as np
 
 from Formulas import formula1, formula2
 from Signature import analyze_function, dec_scale_2, exp_scale, to_si
+from Geometry import pol2cart
 
 from dash import dcc
 from dash.dependencies import Input, Output
@@ -25,23 +22,6 @@ plotly.io.json.config.default_engine = 'json'
 # this dashboard does not work with orjson for some reason.
 # TODO: investigate and fix this, as orjson is much faster than the default json engine.
 
-def cart2pol(x, y):
-    rho = np.sqrt(x**2 + y**2)
-    phi = np.arctan2(y, x)
-    return(rho, phi)
-
-def pol2cart(rho, phi):
-    x = rho * np.cos(phi)
-    y = rho * np.sin(phi)
-    return(x, y)
-
-def magn(x, y):
-    # magnitude of vector
-    return np.sqrt(x**2 + y**2)
-
-def rad2deg(rad):
-    # convert radians to degrees
-    return rad * 180 / np.pi
 
 def fmt(val):
     if isinstance(val, float):
@@ -84,9 +64,9 @@ class DashboardManager:
         R = formula(T)
         Rmax = np.max(R) # makes plot ranges invariant to rotations
         X, Y = pol2cart(R, T)
-        fig = make_subplots(subplot_titles=('R vs T', 'Y vs X'), **self.conf("subplots"))
+        fig = make_subplots(subplot_titles=('Y vs X', 'R vs T' ), **self.conf("subplots"))
 
-        fig.add_trace(go.Scatter(x=X, y=Y, mode=mode, name='Y(X)'), row=1, col=1)
+        fig.add_trace(go.Scatter(x=X, y=Y, mode=mode, name='X(T), Y(T)'), row=1, col=1)
         fig.add_trace(go.Scatter(x=T, y=R, mode=mode, name='R(T)'), **self.conf("trace2"))
 
         fig.update_yaxes(title_text='Y', row=1, col=1, scaleanchor = 'x', scaleratio=1)
@@ -100,7 +80,7 @@ class DashboardManager:
 
         self._settings = {"graph.orientation": "horizontal"}
 
-        self.formula = formula2
+        self.formula = formula1
 
         self.funcparams = analyze_function(self.formula)
 
