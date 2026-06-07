@@ -1,128 +1,72 @@
 
 import numpy as np
-from copy import deepcopy
 from Capstone.Geometry import circumference, normals, pol2cart
 from Capstone.Rockets.Harvester import Harvester
 
 
-def window_intersections(X, Y, Nx, Ny, window_size=11, step=1, tol=0.1, forward_only=True, eps=1e-12):
+def intersections(c0, v0, c_block, v_block):
+    C = c_block - c0
+
+        # denominators
+    den = np.cross(v0, v_block)
+
+        # numerators
+    num_ti = np.cross(C, v_block)
+
+    num_tj = np.cross(C, v0)
+
+    with np.errstate(divide='ignore', invalid='ignore'):
+        ti = num_ti / den
+        tj = num_tj / den
+
+    valid = den != 0
+    return ti,tj,valid
+
+
+def window_intersections(XY, N, window_size=11, step=1, tol=0.1, forward_only=True, eps=1e-12):
     """Find intersections within sliding windows.
     For each window start, test the first ray (index i=start) against all following rays in the window.
     Return compact arrays of hits (i, j, ti, tj, Px, Py)."""
 
-    X = np.asarray(X).ravel()
-    Y = np.asarray(Y).ravel()
-    Nx = np.asarray(Nx).ravel()
-    Ny = np.asarray(Ny).ravel()
-    if not (X.size == Y.size == Nx.size == Ny.size):
-        raise ValueError('All inputs must have same length')
-    n = X.size
-    if window_size < 2:
-        raise ValueError('window_size must be >= 2')
+
+    n = XY.shape[0]
+
     # Prepare arrays
-    c = np.stack((X, Y), axis=1)  # (n,2)
-    v = np.stack((Nx, Ny), axis=1)
+    c = XY
+    v = N
 
-    hits_i = []
-    hits_j = []
-    hits_ti = []
-    hits_tj = []
-    hits_P = []
-    hits_Py = []
-    classes = []
-    condis = []
-    condjs = []
     filt = np.zeros(n).astype(bool)
-    iis = []
 
-    # Helper cross product for arrays
-    # def cross2_arr(a_x, a_y, b_x, b_y):
-    #     return a_x * b_y - a_y * b_x
-    # Slide window (simple Python loop over windows; per-window ops are vectorized)
 
-    print("points to do:",  n - window_size + 1)
-    
     for i in range(0, n - window_size + 1, step):
         this = i + int(window_size/2)
         c0 = c[this]            # (2,)
         v0 = v[this]            # (2,)
+
         c_block = c[i+1:i+window_size]    # (m,2)
         v_block = v[i+1:i+window_size]    # (m,2)
-        # Cx = c_block[:,0] - c0[0]
-        # Cy = c_block[:,1] - c0[1]
-        C = c_block - c0
-        # den = cross(v0, v_block)
-        # den = cross2_arr(v0[0], v0[1], v_block[:,0], v_block[:,1])
-        den = np.cross(v0,v_block)
-        # numerators
-        # num_ti = cross2_arr(Cx, Cy, v_block[:,0], v_block[:,1])
-        num_ti = np.cross(C, v_block)
-        # num_tj = cross2_arr(Cx, Cy, v0[0], v0[1])
-        num_tj = np.cross(C, v0)
 
-        with np.errstate(divide='ignore', invalid='ignore'):
-            ti = num_ti / den
-            tj = num_tj / den
+        ti, tj, valid = intersections(c0, v0, c_block, v_block) 
 
-        valid = den != 0 #& (np.abs(den) > eps)
         valid = valid & (((-3 < ti) & (ti  < tol*3)) | ((-3 < tj ) & (tj < tol*3)))
+
 
         condi = (0 < ti) & (ti < tol*.9)
         condj = (0 < tj) & (tj < tol)
 
-
-        # these must be none true
-        outer = all( condi== False) #| all( condj == False )
-
         clas = valid*1 + condi*1 + condj*1
 
-            
-        # filt[this] = (not any((condi) & (condi != condj))) #| outer
-        
         filt[this] = (not any((condi) & (condi != condj))) & (not all( condi== False))
 
-        #filt[this] = outer
-        #valid &= cond
-        # if not np.any(valid):
-        #     continue
-
-        # if filt.sum() > 0:
-        #     print('wait', i, end='')
-
         # compute intersection points for valid entries
-        # vi_x = v0[0]; 
-        # vi_y = v0[1]
-        # Px = c0[0] + ti * vi_x
-        # Py = c0[1] + ti * vi_y
 
         P = c0 + np.stack((ti,ti), axis=1) * v0
 
-        # append hits
-        # for valid in np.nonzero(valid)[0]:
-        # hits_i.append(i)
-        # hits_j.append(i + 1 + int(idx_local))
+        Px = P[:,0]
+        Py = P[:,1]
+        ii = np.ones_like(ti)*i
 
-        iis.append(i)
-        hits_ti.append(ti[valid])
-        hits_tj.append(tj[valid])
-        hits_P.append(P[valid])
-        classes.append(clas[valid])
-        condis.append(condi[valid])
-        condjs.append(condj[valid])
-
-    extras = {
-            "iis":     np.array(iis),
-            # hits_i: hits_i,
-            # hits_j: hits_j,
-            "hits_ti": np.concatenate(hits_ti), 
-            "hits_tj": np.concatenate(hits_tj), 
-            "hits_P":  np.concatenate(hits_P), 
-            "classes": np.concatenate(classes), 
-            "condis":  np.concatenate(condis), 
-            "condjs":  np.concatenate(condjs), 
-            #  "filt":    np.array(filt),
-        }
-    return filt, extras
+    return filt
 
 
 HSintersections = Harvester(varnames=["ii", "ti", "tj", "Px", "Py",
@@ -131,61 +75,31 @@ HSintersections = Harvester(varnames=["ii", "ti", "tj", "Px", "Py",
 
 
 
-def curve_intersections(X, Y, Nx, Ny, window_size=11, step=1, tol=0.1, forward_only=True, eps=1e-12):
+def curve_intersections(XY, N, window_size=11, step=1, tol=0.1, forward_only=True, eps=1e-12):
     """Find intersections within sliding windows.
     For each window start, test the first ray (index i=start) against all following rays in the window.
     Return compact arrays of hits (i, j, ti, tj, Px, Py)."""
 
-    # I = np.asarray(I).ravel()
-    X = np.asarray(X).ravel()
-    Y = np.asarray(Y).ravel()
-    Nx = np.asarray(Nx).ravel()
-    Ny = np.asarray(Ny).ravel()
-    if not (X.size == Y.size == Nx.size == Ny.size):
-        raise ValueError('All inputs must have same length')
-    n = X.size
-    if window_size < 2:
-        raise ValueError('window_size must be >= 2')
-    # Prepare arrays
-    c = np.stack((X, Y), axis=1)  # (n,2)
-    # v = np.stack((Nx, Ny), axis=1)
-    c1 = np.concatenate((c[-2:,:],c[:-2] ), axis=0)
 
-    v = c1 - c
+    n = XY.shape[0]
 
-    hits_ti = []
-    hits_tj = []
-    hits_Px = []
-    hits_Py = []
-    classes = []
-    condis = []
-    condjs = []
+    c = XY # segment start points
+
+    c1 = np.concatenate((c[-2:,:],c[:-2] ), axis=0) # segment end points (shifted by 2 to avoid adjacent segments)
+
+    v = c1 - c # segment direction vectors
+
     filt = np.zeros(n).astype(bool)
-    iis = []
 
-    # print("points to do:",  n - window_size + 1)
-    
+
     for i in range(0, n - window_size + 1, step):
-        this = i #+ int(window_size/2)
-        c0 = c[this]            # (2,)
-        v0 = v[this]            # (2,)
+        c0 = c[i]            # (2,)
+        v0 = v[i]            # (2,)
+
         c_block = c[i+2:i+window_size]    # (m,2)
         v_block = v[i+2:i+window_size]    # (m,2)
 
-        C = c_block - c0
-
-        den = np.cross(v0,v_block)
-
-        num_ti = np.cross(C, v_block)
-
-        num_tj = np.cross(C, v0)
-
-        with np.errstate(divide='ignore', invalid='ignore'):
-            ti = num_ti / den
-            tj = num_tj / den
-
-        l, u = -0.1, 1.1
-        valid = den != 0 
+        ti, tj, valid = intersections(c0, v0, c_block, v_block) 
         # valid = valid & (((l < ti) & (ti  < u)) | ((l < tj ) & (tj < u)))
 
         condi = (0 <= ti) & (ti < 1)
@@ -193,17 +107,12 @@ def curve_intersections(X, Y, Nx, Ny, window_size=11, step=1, tol=0.1, forward_o
 
         valid = valid & condi & condj
 
-        # these must be none true
-        #outer = all( condi== False) #| all( condj == False )
-
         clas = valid*1 + condi*1 * condj*1
 
         if any(condi & condj):
             j = i + 2 + np.min(np.where(condi & condj))
             filt[i:j] = True
 
-        # filt[this] = (not any((condi) & (condi != condj))) & (not all( condi== False))
-        #filt[this] = any(condi & condj)
 
         P = c0 + np.stack((ti,ti), axis=1) * v0
 
@@ -213,58 +122,42 @@ def curve_intersections(X, Y, Nx, Ny, window_size=11, step=1, tol=0.1, forward_o
 
         HSintersections.collect(locals())
 
-        iis.append(ii[valid])
-        hits_ti.append(ti[valid])
-        hits_tj.append(tj[valid])
-        hits_Px.append(Px[valid])
-        hits_Py.append(Py[valid])
-        classes.append(clas[valid])
-        condis.append(condi[valid])
-        condjs.append(condj[valid])
-
-    intersections = {
-            "iis":     np.concatenate(iis),
-            "hits_ti": np.concatenate(hits_ti), 
-            "hits_tj": np.concatenate(hits_tj), 
-            "hits_Px":  np.concatenate(hits_Px), 
-            "hits_Py":  np.concatenate(hits_Py), 
-            "classes": np.concatenate(classes), 
-            "condis":  np.concatenate(condis), 
-            "condjs":  np.concatenate(condjs), 
-            # "filt":    np.array(filt),
-        }
-    return filt, intersections
+    return filt
 
 
 HScurves = Harvester(varnames=["I", "X", "Y", 
                                   "Nx", "Ny", "Ex", "Ey", 
                                   "X1", "Y1", "filt"])
 
-def step(I, X, Y, d, s):
+def step(I, X, Y, d, s, window_size=50):
     Nx, Ny = normals(X, Y)
 
     Ex, Ey =  X + d * Nx , Y + d * Ny
 
-    filt, intersections = curve_intersections(Ex, Ey, Nx, Ny, window_size=50, step=1, tol=d) # *(1+s*0.1)
+
+        # I = np.asarray(I).ravel()
+    X = np.asarray(X).ravel()
+    Y = np.asarray(Y).ravel()
+    Nx = np.asarray(Nx).ravel()
+    Ny = np.asarray(Ny).ravel()
+    if not (X.size == Y.size == Nx.size == Ny.size):
+        raise ValueError('All inputs must have same length')
     
-    #res = window_intersections(Ex, Ey, Nx, Ny, window_size=50, step=1, tol=d) # *(1+s*0.1)
+    if window_size < 2:
+        raise ValueError('window_size must be >= 2')
+    # Prepare arrays
+    E = np.stack((Ex, Ey), axis=1)  # (n,2)
+    N = np.stack((Nx, Ny), axis=1)  # (n,2)
 
 
-    iis, ti_w, tj_w, Px, Py, clss, condi, condj = intersections.values()
-    # filt is True where the points should be filtered out / dropped
+    filt = curve_intersections(E, N, window_size=window_size, step=1, tol=d) # *(1+s*0.1)
     
+    #res = window_intersections(E, N, window_size=50, step=1, tol=d) # *(1+s*0.1)
     #Px, Py, ti, tj, valid = adjacent_intersections(Ex, Ey, Nx, Ny, forward_only=True)
-    #filt =  np.concatenate([i_idx , j_idx])  #myfilter(ti,tj,d) # & np.append(valid, False)
-    
-    # if filt.size != 0:
-    #     Ex[filt] = np.nan
-    #     Ey[filt] = np.nan
+
+    # filt is True where the points should be filtered out / dropped
 
     if filt.size != 0:
-    #     Ex[filt] = np.nan
-    #     Ey[filt] = np.nan
-
-
         X1 = Ex[~filt]
         Y1 = Ey[~filt]
         I1 =  I[~filt]
@@ -273,37 +166,7 @@ def step(I, X, Y, d, s):
 
     HScurves.collect(locals())
 
-    curve = { 'I':I,
-        'step': s,
-        # 'Theta': T, 
-        # 'ThetaDeg':TD, 
-        # 'Radius': R, 
-        # 'Gradient': GP,
-        'X': X,
-        'Y': Y,
-        'Nx': Nx,
-        'Ny': Ny,
-        'Ex': Ex,
-        'Ey': Ey,
-        'I1': I1,
-        'X1': X1,
-        'Y1': Y1,
-        'filt': filt,
-        'circ': circ,
-        'iis': iis
-        }
-    intrsctns =  { 'step': s,
-        'Px': Px,
-        'Py': Py,
-        'ti': ti_w,
-        'tj': tj_w,
-        'condi': condi, 
-        'condj': condj,
-        'clss' : clss
-        # 'valid': np.append(valid, False),
-        }
-
-    return I1, X1, Y1, curve, intrsctns
+    return I1, X1, Y1
 
 
 
@@ -332,17 +195,11 @@ def run(func, d = .011, steps = 1, n = 1000 ):
 
     X, Y = pol2cart(R, T)
 
-    data = []
-    extras = []
 
     for s in range(steps):
         print("step:", s, "points:", X.shape)
 
-        I, X, Y,res, extra = step(I, X, Y, d, s)
-
-        data.append(deepcopy(res))
-        extras.append(deepcopy(extra))
+        I, X, Y = step(I, X, Y, d, s)
 
 
-    return data, extras
 

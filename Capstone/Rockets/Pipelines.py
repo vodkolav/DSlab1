@@ -32,7 +32,7 @@ def test():
 
     profile = formula2(*args)
 
-    data, extra = run(profile, d, steps, n)
+    run(profile, d, steps, n)
 
     HSdata = HScurves.results()
     HSintrsctns = HSintersections.results()
