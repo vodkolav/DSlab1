@@ -2,6 +2,7 @@
 import numpy as np
 from copy import deepcopy
 from Capstone.Geometry import circumference, normals, pol2cart
+from Capstone.Rockets.Harvester import Harvester
 
 
 def window_intersections(X, Y, Nx, Ny, window_size=11, step=1, tol=0.1, forward_only=True, eps=1e-12):
@@ -109,7 +110,7 @@ def window_intersections(X, Y, Nx, Ny, window_size=11, step=1, tol=0.1, forward_
         condis.append(condi[valid])
         condjs.append(condj[valid])
 
-    res = {
+    extras = {
             "iis":     np.array(iis),
             # hits_i: hits_i,
             # hits_j: hits_j,
@@ -119,9 +120,14 @@ def window_intersections(X, Y, Nx, Ny, window_size=11, step=1, tol=0.1, forward_
             "classes": np.concatenate(classes), 
             "condis":  np.concatenate(condis), 
             "condjs":  np.concatenate(condjs), 
-            "filt":    np.array(filt),
+            #  "filt":    np.array(filt),
         }
-    return res
+    return filt, extras
+
+
+HSintersections = Harvester(varnames=["ii", "ti", "tj", "Px", "Py",
+                                         "clas", "condi", "condj"],
+                                elems='valid')
 
 
 
@@ -149,7 +155,8 @@ def curve_intersections(X, Y, Nx, Ny, window_size=11, step=1, tol=0.1, forward_o
 
     hits_ti = []
     hits_tj = []
-    hits_P = []
+    hits_Px = []
+    hits_Py = []
     classes = []
     condis = []
     condjs = []
@@ -198,43 +205,52 @@ def curve_intersections(X, Y, Nx, Ny, window_size=11, step=1, tol=0.1, forward_o
         # filt[this] = (not any((condi) & (condi != condj))) & (not all( condi== False))
         #filt[this] = any(condi & condj)
 
-
         P = c0 + np.stack((ti,ti), axis=1) * v0
 
-        iis.append(i)
+        Px = P[:,0]
+        Py = P[:,1]
+        ii = np.ones_like(ti)*i
+
+        HSintersections.collect(locals())
+
+        iis.append(ii[valid])
         hits_ti.append(ti[valid])
         hits_tj.append(tj[valid])
-        hits_P.append(P[valid])
+        hits_Px.append(Px[valid])
+        hits_Py.append(Py[valid])
         classes.append(clas[valid])
         condis.append(condi[valid])
         condjs.append(condj[valid])
 
-    res = {
-            "iis":     np.array(iis),
+    intersections = {
+            "iis":     np.concatenate(iis),
             "hits_ti": np.concatenate(hits_ti), 
             "hits_tj": np.concatenate(hits_tj), 
-            "hits_P":  np.concatenate(hits_P), 
+            "hits_Px":  np.concatenate(hits_Px), 
+            "hits_Py":  np.concatenate(hits_Py), 
             "classes": np.concatenate(classes), 
             "condis":  np.concatenate(condis), 
             "condjs":  np.concatenate(condjs), 
-            "filt":    np.array(filt),
+            # "filt":    np.array(filt),
         }
-    return res
+    return filt, intersections
 
 
-
+HScurves = Harvester(varnames=["I", "X", "Y", 
+                                  "Nx", "Ny", "Ex", "Ey", 
+                                  "X1", "Y1", "filt"])
 
 def step(I, X, Y, d, s):
     Nx, Ny = normals(X, Y)
 
     Ex, Ey =  X + d * Nx , Y + d * Ny
 
-    res = curve_intersections(Ex, Ey, Nx, Ny, window_size=50, step=1, tol=d) # *(1+s*0.1)
+    filt, intersections = curve_intersections(Ex, Ey, Nx, Ny, window_size=50, step=1, tol=d) # *(1+s*0.1)
     
     #res = window_intersections(Ex, Ey, Nx, Ny, window_size=50, step=1, tol=d) # *(1+s*0.1)
 
 
-    iis, ti_w, tj_w, P, clss, condi, condj, filt = res.values()
+    iis, ti_w, tj_w, Px, Py, clss, condi, condj = intersections.values()
     # filt is True where the points should be filtered out / dropped
     
     #Px, Py, ti, tj, valid = adjacent_intersections(Ex, Ey, Nx, Ny, forward_only=True)
@@ -253,8 +269,11 @@ def step(I, X, Y, d, s):
         Y1 = Ey[~filt]
         I1 =  I[~filt]
 
+    circ = circumference(X,Y)
 
-    res = { 'I':I,
+    HScurves.collect(locals())
+
+    curve = { 'I':I,
         'step': s,
         # 'Theta': T, 
         # 'ThetaDeg':TD, 
@@ -270,12 +289,12 @@ def step(I, X, Y, d, s):
         'X1': X1,
         'Y1': Y1,
         'filt': filt,
-        'circ': circumference(X,Y),
+        'circ': circ,
         'iis': iis
         }
-    extra =  { 'step': s,
-        'Px': P[:,0],
-        'Py': P[:,1],
+    intrsctns =  { 'step': s,
+        'Px': Px,
+        'Py': Py,
         'ti': ti_w,
         'tj': tj_w,
         'condi': condi, 
@@ -284,8 +303,7 @@ def step(I, X, Y, d, s):
         # 'valid': np.append(valid, False),
         }
 
-
-    return I1, X1, Y1, res, extra
+    return I1, X1, Y1, curve, intrsctns
 
 
 

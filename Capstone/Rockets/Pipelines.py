@@ -3,11 +3,11 @@
 import numpy as np
 import pandas as pd
 
-from Capstone.Rockets.Plots import dots_and_arrows
+from Capstone.Rockets.Plots import dots_and_arrows, Interactive_polar, Shape
 from Capstone.Rockets.Simulation import step, run
-from Superformula.Formulas import formula1, formula2
-from Geometry import cart2pol, pol2cart, rad2deg, normals
-from Rockets.Plots import Interactive_polar, Shape
+from Capstone.Superformula.Formulas import formula1, formula2
+from Capstone.Geometry import cart2pol, pol2cart, rad2deg, normals
+from Capstone.utils import describe, clip, shape, pick
 
 def profile2(theta):
     r = 10 / (np.cos(np.pi/4 - (theta % (np.pi/2))))
@@ -21,29 +21,32 @@ def profile1(theta):
     return r
 
 
+def test():
 
-isSubscriptable = lambda obj: hasattr(obj, '__getitem__')
+    from Capstone.Rockets.Simulation import HScurves, HSintersections
+
+    d = .11
+    steps = 10
+    n = 1000
+    args = ('trapez wave', 5, 1, -0.66, 0.95, 0, 1, 1)
+
+    profile = formula2(*args)
+
+    data, extra = run(profile, d, steps, n)
+
+    HSdata = HScurves.results()
+    HSintrsctns = HSintersections.results()
+
+    describe(HSdata)
+    describe(HSintrsctns)
+
+    print("Simulation completed.")
 
 
-def describe(subst):
-    fmt = "{n} {s}: {t}"
-    summ = [fmt.format(n=k, t=type(v), s= v.shape if isSubscriptable(v) else v) for k,v in subst.items() ]
-    print(*summ, sep='\n')
+if __name__ == "__main__":
+    test()
 
-def clip(vars, indcs = slice(None)):
-
-    rooster = vars.split(", ")
-    #print(rooster)
-    thevars = {k: globals()[k] for k in rooster}
-
-    subst = {k: v[indcs] if isSubscriptable(v) else v  for k, v in thevars.items()}
-    describe(subst)
-    return subst
-
-def pick(dt):
-    fields = "I, step, X, Y, Nx, Ny, circ".split(', ')
-    toplot = {f: dt[f] for f in fields}
-    return toplot
+exit()
 
 # One step
 
