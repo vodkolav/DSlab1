@@ -7,6 +7,7 @@ class Harvester:
     """Collects variable values across iterations of a loop, and concatenates them at the end."""
 
     def __init__(self, varnames="", elems=None):
+        # TODO: add option to specify how to treat error when variable is not found in fnlocals, e.g ignore, warn, or raise error
         self.varnames = varnames
         self.elems = elems
         self.storage = {vn:[] for vn in varnames}

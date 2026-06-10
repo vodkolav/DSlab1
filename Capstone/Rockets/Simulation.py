@@ -1,6 +1,6 @@
 
 import numpy as np
-from Capstone.Geometry import circumference, normals, pol2cart
+from Capstone.Geometry import circumference, normals, magn, pol2cart
 from Capstone.Rockets.Harvester import Harvester
 
 
@@ -71,7 +71,7 @@ def window_intersections(XY, N, window_size=11, step=1, tol=0.1, forward_only=Tr
 
 HSintersections = Harvester(varnames=["ii", "ti", "tj", "Px", "Py",
                                          "clas", "condi", "condj"],
-                                elems='valid')
+                            elems='valid')
 
 
 
@@ -85,8 +85,7 @@ def curve_intersections(XY, N, window_size=11, step=1, tol=0.1, forward_only=Tru
 
     c = XY # segment start points
 
-    c1 = np.concatenate((c[-2:,:],c[:-2] ), axis=0) # segment end points (shifted by 2 to avoid adjacent segments)
-
+    c1 = np.concatenate((c[-1:,:],c[:-1]), axis=0) # segment end points 
     v = c1 - c # segment direction vectors
 
     filt = np.zeros(n).astype(bool)
@@ -98,6 +97,10 @@ def curve_intersections(XY, N, window_size=11, step=1, tol=0.1, forward_only=Tru
 
         c_block = c[i+2:i+window_size]    # (m,2)
         v_block = v[i+2:i+window_size]    # (m,2)
+        # rest of the vectors in window (shifted by 2 to avoid adjacent segments)
+        # Adjacent segments by definition intersect at their shared vertex, which is not a valid intersection for our purposes. 
+        # By shifting by 2, we ensure that we are only checking for intersections between non-adjacent segments.
+
 
         ti, tj, valid = intersections(c0, v0, c_block, v_block) 
         # valid = valid & (((l < ti) & (ti  < u)) | ((l < tj ) & (tj < u)))
@@ -125,9 +128,45 @@ def curve_intersections(XY, N, window_size=11, step=1, tol=0.1, forward_only=Tru
     return filt
 
 
+# rarefactions: 
+def rarefactions(I, X, Y):
+    
+    XY = np.stack((X,Y), axis=1)
+    # n = XY.shape[0]
+
+    c = XY # segment start points
+
+    c1 = np.concatenate((c[-1:,:],c[:-1]), axis=0) # segment end points 
+    v = c1 - c # segment direction vectors    
+
+    m = magn(v[:,0], v[:,1])
+
+    isNew = np.zeros_like(X, dtype=bool)
+
+    quantiles = np.sum(m[:, None] > m, axis=1) / (len(m) - 1)
+    # only take the points in the top 2% of segment lengths, e.g points that diverged the most
+    highs = quantiles > .98
+
+    newI = I[highs]
+
+    # simplest interpolation: just add half the segment vector to the start point of the segment
+    newXY = XY[highs] + v[highs] * 0.5
+    newX, newY =  newXY[:,0], newXY[:,1]
+    news = np.ones_like(newX, dtype=bool)
+
+    # TODO: make this a single array operation instead of 3 separate ones
+    X1 = np.insert(X, newI[:-1], newX[:-1], axis=0)
+    Y1 = np.insert(Y, newI[:-1], newY[:-1], axis=0)
+    I1 = np.arange(X1.shape[0])
+    isNew = np.insert(isNew, newI[:-1], news[:-1], axis=0)
+
+    return I1, X1, Y1, isNew
+
+
 HScurves = Harvester(varnames=["I", "X", "Y", 
-                                  "Nx", "Ny", "Ex", "Ey", 
-                                  "X1", "Y1", "filt"])
+                               "Nx", "Ny", "Ex", "Ey",
+                               "I1","X1", "Y1", "filt"])
+                                # circ, , "isNew" 
 
 def step(I, X, Y, d, s, window_size=50):
     Nx, Ny = normals(X, Y)
@@ -160,9 +199,12 @@ def step(I, X, Y, d, s, window_size=50):
     if filt.size != 0:
         X1 = Ex[~filt]
         Y1 = Ey[~filt]
-        I1 =  I[~filt]
+        I1 = np.arange(X1.shape[0])
 
-    circ = circumference(X,Y)
+    isNew = True
+    I1, X1, Y1, isNew = rarefactions(I1, X1, Y1)
+
+    # circ = circumference(X1,Y1)
 
     HScurves.collect(locals())
 
