@@ -15,6 +15,12 @@ def dots_and_arrows(I, X, Y, Nx, Ny, I1, X1, Y1, Ex, Ey, Px, Py, d, clas, filt, 
                              hovertext=I1, name='X1Y1'))
     fig.add_trace(go.Scatter(x=Ex, y=Ey, mode='lines', marker=dict(size=6, color=filt*1),
                              hovertext=I, name='ExEy'))
+    
+    Hx = kwargs['Hx']
+    Hy = kwargs['Hy']
+    fig.add_trace(go.Scatter(x=Hx, y=Hy, mode='lines', marker=dict(size=6, color=filt*1),
+                             name='Hull'))
+
     fig.update_layout(width=800, height=800)
     # fig.update_xaxes(range=roi['x'])
     # fig.update_yaxes(range=roi['y'])

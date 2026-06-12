@@ -1,6 +1,6 @@
 
 import numpy as np
-from Capstone.Geometry import circumference, normals, magn, pol2cart
+from Capstone.Geometry import circumference, normals, magn, pol2cart, cart2pol
 from Capstone.Rockets.Harvester import Harvester
 
 
@@ -162,17 +162,21 @@ def rarefactions(I, X, Y):
 
     return I1, X1, Y1, isNew
 
+def active(X,Y,rh):
+    R,_ = cart2pol(X,Y)
+    A = R < rh
+    return A
 
-HScurves = Harvester(varnames=["I", "X", "Y", 
+
+HScurves = Harvester(varnames=["I", "X", "Y", "A", "S",
                                "Nx", "Ny", "Ex", "Ey",
                                "I1","X1", "Y1", "filt"])
                                 # circ, , "isNew" 
 
-def step(I, X, Y, d, s, window_size=50):
+def step(I, X, Y, A, d, rh, s, window_size=50):
     Nx, Ny = normals(X, Y)
 
-    Ex, Ey =  X + d * Nx , Y + d * Ny
-
+    Ex, Ey =  X + d * A * Nx , Y + d * A * Ny
 
         # I = np.asarray(I).ravel()
     X = np.asarray(X).ravel()
@@ -204,15 +208,29 @@ def step(I, X, Y, d, s, window_size=50):
     isNew = True
     I1, X1, Y1, isNew = rarefactions(I1, X1, Y1)
 
-    # circ = circumference(X1,Y1)
+    A1 = active(X1,Y1, rh)
+
+    S = np.ones_like(A)*s
+    C = circumference(X1*A1,Y1*A1)
 
     HScurves.collect(locals())
 
-    return I1, X1, Y1
+    return I1, X1, Y1, A1, C
 
 
+HSsim = Harvester(["s", "C"])
 
-def run(func, d = .011, steps = 1, n = 1000 ):
+def grain(func, n):
+    T = np.linspace(0, np.pi*2, n) + 0.00001 
+    T = np.append(T, T[:1])
+    I = np.arange(len(T))
+    # Calculate Radius for each Theta
+    R = func(T)
+    X, Y = pol2cart(R, T)
+    return I, R, T, X, Y 
+
+
+def run(func, d = .011, steps = 1, n = 1000, hr = 4 ):
     """runs the simulation
 
     Args:
@@ -229,19 +247,24 @@ def run(func, d = .011, steps = 1, n = 1000 ):
     print('Simulation Steps:', steps)
     print('Curve points (n):', n)
 
-    # Theta (radians)
-    T = np.linspace(0, np.pi*2 , n)
-    I = np.arange(len(T))
-    # Calculate Radius for each Theta
-    R = func(T)
+    I, R, T, X, Y = grain(func, n)
+    #hr = 4 # hull radius
+    Hr = np.ones_like(T)*hr
+    Hx, Hy = pol2cart(Hr, T)
+    A = active(X,Y, hr)
 
-    X, Y = pol2cart(R, T)
-
+    HScurves.add_once(Hx = Hx, Hy = Hy)
 
     for s in range(steps):
         print("step:", s, "points:", X.shape)
 
-        I, X, Y = step(I, X, Y, d, s)
+        I, X, Y, A, C = step(I, X, Y, A, d, hr, s)
+
+        HSsim.collect(locals())
+        if sum(A) == 0:
+            print("everything's burnt")
+            break
+
 
 
 

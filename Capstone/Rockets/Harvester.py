@@ -14,14 +14,24 @@ class Harvester:
 
 
     def collect(self, fnlocals):
+        #TODO: validate that all variables that we want to collect are of the same size. 
+        # Or size 1 - for scalar metrics such as circumference at step, etc.
         for vn in self.varnames:
             varbl = fnlocals[vn]
             if self.elems is not None:
                 elems = fnlocals[self.elems]
                 content = varbl[elems]
             else:
-                content = varbl
+                content = [varbl] if np.isscalar(varbl) else varbl
             self.storage[vn].append(deepcopy(content))
+
+
+    def add_once(self, **kwargs):
+        for k,v in kwargs.items():
+            if k in self.storage.keys():
+                self.storage[k].append(deepcopy(v))
+            else:
+                self.storage[k] = [deepcopy(v)]
 
     def results(self):
         return {vn: np.concatenate(vals,axis=0) for vn, vals in self.storage.items()}
