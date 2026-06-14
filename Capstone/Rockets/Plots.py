@@ -5,14 +5,16 @@ import plotly.express as px
 
 from Capstone.Geometry import pol2cart
 
-def dots_and_arrows(I, X, Y, Nx, Ny, I1, X1, Y1, Ex, Ey, Px, Py, d, clas, filt, **kwargs):
-    fig = ff.create_quiver(X, Y, +d * Nx, +d * Ny, scale=1, arrow_scale=.05, name='offset',hovertext=I)
+def dots_and_arrows(I, X, Y, Ex, Ey, Px, Py, clas, filt, **kwargs):
+    Ax, Ay = Ex - X, Ey - Y
+
+    fig = ff.create_quiver(X, Y, Ax, Ay, scale=1, arrow_scale=.05, name='offset',hovertext=I)
     fig.add_trace(go.Scatter(x=Px, y=Py, mode='markers',
                              marker=dict(size=6, color = clas*1, symbol = 'x') ,
                              hovertext = clas,
                              name='window_hits'))
-    fig.add_trace(go.Scatter(x=X1, y=Y1, mode='lines', marker=dict(size=6, color=filt*1),
-                             hovertext=I1, name='X1Y1'))
+    fig.add_trace(go.Scatter(x=X, y=Y, mode='lines', marker=dict(size=6, color=filt*1),
+                              hovertext=I, name='XY'))
     fig.add_trace(go.Scatter(x=Ex, y=Ey, mode='lines', marker=dict(size=6, color=filt*1),
                              hovertext=I, name='ExEy'))
     

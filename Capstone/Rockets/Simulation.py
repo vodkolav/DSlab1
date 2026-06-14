@@ -69,13 +69,13 @@ def window_intersections(XY, N, window_size=11, step=1, tol=0.1, forward_only=Tr
     return filt
 
 
-HSintersections = Harvester(varnames=["ii", "ti", "tj", "Px", "Py",
+HSintersections = Harvester(varnames=["SimStep", "ii", "ti", "tj", "Px", "Py",
                                          "clas", "condi", "condj"],
                             elems='valid')
 
 
 
-def curve_intersections(XY, N, window_size=11, step=1, tol=0.1, forward_only=True, eps=1e-12):
+def curve_intersections(XY, N, window_size=11, SimStep=1, tol=0.1, forward_only=True, eps=1e-12):
     """Find intersections within sliding windows.
     For each window start, test the first ray (index i=start) against all following rays in the window.
     Return compact arrays of hits (i, j, ti, tj, Px, Py)."""
@@ -91,7 +91,7 @@ def curve_intersections(XY, N, window_size=11, step=1, tol=0.1, forward_only=Tru
     filt = np.zeros(n).astype(bool)
 
 
-    for i in range(0, n - window_size + 1, step):
+    for i in range(0, n - window_size + 1, 1):
         c0 = c[i]            # (2,)
         v0 = v[i]            # (2,)
 
@@ -170,8 +170,8 @@ def active(X,Y,rh):
 
 HScurves = Harvester(varnames=["I", "X", "Y", "A", "S",
                                "Nx", "Ny", "Ex", "Ey",
-                               "I1","X1", "Y1", "filt"])
-                                # circ, , "isNew" 
+                               "filt"], on_size_mismatch='warn')
+                              #"I1","X1", "Y1", circ, , "isNew" 
 
 def step(I, X, Y, A, d, rh, s, window_size=50):
     Nx, Ny = normals(X, Y)
@@ -193,7 +193,7 @@ def step(I, X, Y, A, d, rh, s, window_size=50):
     N = np.stack((Nx, Ny), axis=1)  # (n,2)
 
 
-    filt = curve_intersections(E, N, window_size=window_size, step=1, tol=d) # *(1+s*0.1)
+    filt = curve_intersections(E, N, window_size=window_size, SimStep=s, tol=d) # *(1+s*0.1)
     
     #res = window_intersections(E, N, window_size=50, step=1, tol=d) # *(1+s*0.1)
     #Px, Py, ti, tj, valid = adjacent_intersections(Ex, Ey, Nx, Ny, forward_only=True)
@@ -253,7 +253,6 @@ def run(func, d = .011, steps = 1, n = 1000, hr = 4 ):
     Hx, Hy = pol2cart(Hr, T)
     A = active(X,Y, hr)
 
-    HScurves.add_once(Hx = Hx, Hy = Hy)
 
     for s in range(steps):
         print("step:", s, "points:", X.shape)
@@ -265,6 +264,7 @@ def run(func, d = .011, steps = 1, n = 1000, hr = 4 ):
             print("everything's burnt")
             break
 
+    HSsim.add_once(Hx = Hx, Hy = Hy)
 
 
 
