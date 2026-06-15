@@ -74,6 +74,20 @@ HSintersections = Harvester(varnames=["SimStep", "ii", "ti", "tj", "Px", "Py",
                             elems='valid')
 
 
+def cslice(start, stop, n):
+    """circular slice. like a clock
+
+    Args:
+        n (int): total amt of items in circular array
+        start (int): start position of slice
+        stop (int): stop position of slice
+
+    Returns:
+        list: indices to extract
+    """
+    res = np.arange(start, stop) % n
+    return res
+
 
 def curve_intersections(XY, N, window_size=11, SimStep=1, tol=0.1, forward_only=True, eps=1e-12):
     """Find intersections within sliding windows.
@@ -91,12 +105,15 @@ def curve_intersections(XY, N, window_size=11, SimStep=1, tol=0.1, forward_only=
     filt = np.zeros(n).astype(bool)
 
 
-    for i in range(0, n - window_size + 1, 1):
+    for i in range(0, n , 1):
+
         c0 = c[i]            # (2,)
         v0 = v[i]            # (2,)
 
-        c_block = c[i+2:i+window_size]    # (m,2)
-        v_block = v[i+2:i+window_size]    # (m,2)
+        sl = cslice(i+2, i+window_size, n)
+
+        c_block = c[sl] 
+        v_block = v[sl] 
         # rest of the vectors in window (shifted by 2 to avoid adjacent segments)
         # Adjacent segments by definition intersect at their shared vertex, which is not a valid intersection for our purposes. 
         # By shifting by 2, we ensure that we are only checking for intersections between non-adjacent segments.
@@ -114,7 +131,8 @@ def curve_intersections(XY, N, window_size=11, SimStep=1, tol=0.1, forward_only=
 
         if any(condi & condj):
             j = i + 2 + np.min(np.where(condi & condj))
-            filt[i:j] = True
+            sl = cslice(i,j,n)
+            filt[sl] = True
 
 
         P = c0 + np.stack((ti,ti), axis=1) * v0
@@ -221,8 +239,8 @@ def step(I, X, Y, A, d, rh, s, window_size=50):
 HSsim = Harvester(["s", "C"])
 
 def grain(func, n):
-    T = np.linspace(0, np.pi*2, n) + 0.00001 
-    T = np.append(T, T[:1])
+    T = np.linspace(0, np.pi*2, n, endpoint=False) - 0.0001
+    # T = np.append(T, T[:1])
     I = np.arange(len(T))
     # Calculate Radius for each Theta
     R = func(T)

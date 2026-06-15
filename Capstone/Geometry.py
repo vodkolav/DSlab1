@@ -32,7 +32,12 @@ def circumference(X,Y):
 
 
 def normals(X, Y, ):
-    # Calculates normals of the curve
+    # Calculates normals of the curve (assumes the curve is closed)
+    tail = 2
+    # Add some samples from opposite ends, 
+    # so that X,Y appear circular to gradient
+    X = np.concatenate([X[-tail:], X, X[:tail]])
+    Y = np.concatenate([Y[-tail:], Y, Y[:tail]])
 
     Gy = np.gradient(Y, X)
 
@@ -62,7 +67,7 @@ def normals(X, Y, ):
     S_reshaped = scaling_factor_S[np.newaxis, :]
 
     N_consistent = NxNy * S_reshaped 
-    Nx, Ny =  N_consistent
+    Nx, Ny =  N_consistent[:, tail:-tail]
     return Nx, Ny
 
 
