@@ -7,7 +7,7 @@ from Capstone.Geometry import pol2cart
 
 def dots_and_arrows(I, X, Y, Ex, Ey, Px, Py, clas, filt, **kwargs):
     Ax, Ay = Ex - X, Ey - Y
-
+    isNew = kwargs['isNew']
     fig = ff.create_quiver(X, Y, Ax, Ay, scale=1, arrow_scale=.05, name='offset',hovertext=I)
     fig.add_trace(go.Scatter(x=Px, y=Py, mode='markers',
                              marker=dict(size=6, color = clas*1, symbol = 'x') ,
@@ -15,7 +15,7 @@ def dots_and_arrows(I, X, Y, Ex, Ey, Px, Py, clas, filt, **kwargs):
                              name='window_hits'))
     fig.add_trace(go.Scatter(x=X, y=Y, mode='lines', marker=dict(size=6, color=filt*1),
                               hovertext=I, name='XY'))
-    fig.add_trace(go.Scatter(x=Ex, y=Ey, mode='lines', marker=dict(size=6, color=filt*1),
+    fig.add_trace(go.Scatter(x=Ex, y=Ey, mode='markers', marker=dict(size=6, color=isNew*1),
                              hovertext=I, name='ExEy'))
     
     Hx = kwargs['Hx']
@@ -27,7 +27,6 @@ def dots_and_arrows(I, X, Y, Ex, Ey, Px, Py, clas, filt, **kwargs):
     # fig.update_xaxes(range=roi['x'])
     # fig.update_yaxes(range=roi['y'])
     fig.show()
-
 
 
 def Interactive_polar(df):

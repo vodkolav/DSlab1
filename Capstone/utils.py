@@ -35,3 +35,30 @@ def pick(dt):
     fields = "I, step, X, Y, Nx, Ny, circ".split(', ')
     toplot = {f: dt[f] for f in fields}
     return toplot
+
+
+def trynumeric(val):
+    try:
+        r = float(val)
+    except:
+        return val
+    return float(val)
+
+
+def  parse_sf_params(fn):
+    """Parse sf parameters from saved graph filename, which usually looks like:
+    fn = "superformula_funcname=risingsun_m=5_a=1_b=1_n_1=5.01_n_2=100_n_3=100_20260427_123859.png"
+ 
+    Args:
+        fn (string): the filename to parse
+
+    Returns:
+        dict: dictionary of parameters extracted from the filename
+    """
+    import re
+    fn = fn.replace("_", " ")
+    fn = re.sub("([a-z]) (\d)=", "\\1_\\2=", fn )
+    j = fn.split(" ")
+    k = [i.split("=") for i in j if "=" in i]
+    l = {i[0]: trynumeric(i[1]) for i in k}
+    return l 

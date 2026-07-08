@@ -1,5 +1,6 @@
 
 import numpy as np
+from scipy.interpolate import Rbf, CubicSpline
 from Capstone.Geometry import circumference, normals, magn, pol2cart, cart2pol
 from Capstone.Rockets.Harvester import Harvester
 
@@ -147,7 +148,7 @@ def curve_intersections(XY, N, window_size=11, SimStep=1, tol=0.1, forward_only=
 
 
 # rarefactions: 
-def rarefactions(I, X, Y):
+def rarefactions(I, X, Y, d = 0.1):
     
     XY = np.stack((X,Y), axis=1)
     # n = XY.shape[0]
@@ -163,22 +164,73 @@ def rarefactions(I, X, Y):
 
     quantiles = np.sum(m[:, None] > m, axis=1) / (len(m) - 1)
     # only take the points in the top 2% of segment lengths, e.g points that diverged the most
-    highs = quantiles > .98
+    divergents = (m > 2*d) & (quantiles > .98) 
 
-    newI = I[highs]
+    return divergents
 
-    # simplest interpolation: just add half the segment vector to the start point of the segment
-    newXY = XY[highs] + v[highs] * 0.5
+
+def interpolate(XY, xy):
+    x,y = np.split(XY,2, axis=1)
+    xi,_ = np.split(xy,2, axis=1)
+    # TODO: option to choose interpolation method in simulation settings.
+    # rbf = Rbf(x, y)
+    rbf = CubicSpline(x.squeeze(), y.squeeze())
+    yi = rbf(xi)
+    return np.concatenate((xi,yi), axis = 1)
+
+
+def fill(I, X, Y, divergents, d,  method = 'dumb'):
+
+    XY = np.stack((X,Y), axis=1)
+    # n = XY.shape[0]
+
+    c = XY # segment start points
+
+    c1 = np.concatenate((c[-1:,:],c[:-1]), axis=0) # segment end points 
+    v = c1 - c # segment direction vectors    
+
+    if method == 'dumb':
+            # simplest interpolation: just add half the segment vector to the start point of the segment
+            newXY = XY[divergents] + v[divergents] * 0.5
+            newI = I[divergents]
+    else:
+        # add multiple points along the segment vector
+        # direction vectors of divergents
+        # hi = XY[divergents+1,:] - XY[divergents,:]
+        hi = v[divergents,:]
+
+        l = np.sqrt(np.sum(hi**2,axis=1))
+        jj = (l/d).astype(int)       
+
+        dividx = I[divergents]
+
+        # cubXY = np.zeros((0,2))
+        newXY = np.zeros((0,2))
+        newI = np.zeros(0)
+
+        for i,rr in enumerate(dividx):
+            j = np.arange(1, jj[i]).reshape(jj[i]-1,1) 
+
+            wat = np.dot(j,hi[[i],:])
+            
+            xy = XY[rr,:] + wat / jj[i]
+
+            if method == 'interp':
+                slc = cslice(rr-3,rr+3, XY.shape[0])
+                xy = interpolate(XY[slc,:], xy)
+
+
+            newXY = np.concatenate((newXY, xy), axis=0)
+            onns = np.ones(jj[i]-1)
+
+            newI = np.concatenate((newI, onns*(rr)), axis=0)
+            # print("a", a)
+        newI = newI.astype(int)
+        newI, newXY
+
     newX, newY =  newXY[:,0], newXY[:,1]
-    news = np.ones_like(newX, dtype=bool)
+    return newI, newX, newY
 
-    # TODO: make this a single array operation instead of 3 separate ones
-    X1 = np.insert(X, newI[:-1], newX[:-1], axis=0)
-    Y1 = np.insert(Y, newI[:-1], newY[:-1], axis=0)
-    I1 = np.arange(X1.shape[0])
-    isNew = np.insert(isNew, newI[:-1], news[:-1], axis=0)
-
-    return I1, X1, Y1, isNew
 
 def active(X,Y,rh):
     R,_ = cart2pol(X,Y)
@@ -186,12 +238,12 @@ def active(X,Y,rh):
     return A
 
 
-HScurves = Harvester(varnames=["I", "X", "Y", "A", "S",
+HScurves = Harvester(varnames=["I", "X", "Y", "A", "S", "isNew",
                                "Nx", "Ny", "Ex", "Ey",
-                               "filt"], on_size_mismatch='warn')
+                               "filt"], on_size_mismatch='error')
                               #"I1","X1", "Y1", circ, , "isNew" 
 
-def step(I, X, Y, A, d, rh, s, window_size=50):
+def step(I, X, Y, A, isNew, d, rh, s, window_size=50):
     Nx, Ny = normals(X, Y)
 
     Ex, Ey =  X + d * A * Nx , Y + d * A * Ny
@@ -223,8 +275,20 @@ def step(I, X, Y, A, d, rh, s, window_size=50):
         Y1 = Ey[~filt]
         I1 = np.arange(X1.shape[0])
 
-    isNew = True
-    I1, X1, Y1, isNew = rarefactions(I1, X1, Y1)
+    divergents = rarefactions(I1, X1, Y1)
+
+    newI, newX, newY =  fill(I1, X1, Y1, divergents, d, method = 'manydumb')
+
+    news = np.ones_like(newI)
+    isNew1 = np.zeros_like(X1)
+
+
+    # TODO: make this a single array operation instead of 3 separate ones
+    X1 = np.insert(X1, newI[:-1], newX[:-1], axis=0)
+    Y1 = np.insert(Y1, newI[:-1], newY[:-1], axis=0)
+    I1 = np.arange(X1.shape[0])
+    isNew1 = np.insert(isNew1, newI[:-1], news[:-1], axis=0)
+
 
     A1 = active(X1,Y1, rh)
 
@@ -233,7 +297,7 @@ def step(I, X, Y, A, d, rh, s, window_size=50):
 
     HScurves.collect(locals())
 
-    return I1, X1, Y1, A1, C
+    return I1, X1, Y1, A1, isNew1, C
 
 
 HSsim = Harvester(["s", "C"])
@@ -271,11 +335,12 @@ def run(func, d = .011, steps = 1, n = 1000, hr = 4 ):
     Hx, Hy = pol2cart(Hr, T)
     A = active(X,Y, hr)
 
+    IsNew = np.zeros_like(I)
 
     for s in range(steps):
         print("step:", s, "points:", X.shape)
 
-        I, X, Y, A, C = step(I, X, Y, A, d, hr, s)
+        I, X, Y, A, IsNew, C = step(I, X, Y, A, IsNew, d, hr, s)
 
         HSsim.collect(locals())
         if sum(A) == 0:
