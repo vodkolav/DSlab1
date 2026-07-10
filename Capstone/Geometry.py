@@ -91,3 +91,64 @@ def arc_lens(X,Y):
     diff = np.diff(XY, axis=0)
     Lens = np.sqrt(np.sum(diff ** 2, axis=1))
     return Lens
+
+
+def slerp(v1, v2, d):
+    """
+    Interpolate between two 2D vectors with points spaced along the circular arc.
+
+    Parameters
+    ----------
+    v1, v2 : array_like, shape (2,)
+        Vectors from the same origin and with the same length.
+    d : float
+        Maximum allowed arc length between adjacent returned points.
+
+    Returns
+    -------
+    np.ndarray
+        Array of shape (k, 2) containing the intermediate points between v1 and v2.
+        If d is larger than the arc length, an empty array is returned.
+    """
+    v1 = np.asarray(v1, dtype=float).reshape(-1)
+    v2 = np.asarray(v2, dtype=float).reshape(-1)
+
+    if v1.shape != (2,) or v2.shape != (2,):
+        raise ValueError("v1 and v2 must each be 2D vectors")
+    if d <= 0:
+        raise ValueError("d must be positive")
+
+    r1 = np.linalg.norm(v1)
+    r2 = np.linalg.norm(v2)
+    if np.isclose(r1, 0.0) or np.isclose(r2, 0.0):
+        raise ValueError("v1 and v2 must be non-zero vectors")
+    # if not np.isclose(r1, r2):
+    #     raise ValueError("v1 and v2 must have the same length")
+
+    u1 = v1 / r1
+    u2 = v2 / r2
+
+    # Signed angle from v1 to v2 (counter-clockwise if positive)
+    theta = np.arctan2(u1[0] * u2[1] - u1[1] * u2[0], np.dot(u1, u2))
+    if np.isclose(theta, 0.0):
+        return np.empty((0, 2), dtype=float)
+
+    arc_len = r1 * abs(theta)
+    if d > arc_len:
+        return np.empty((0, 2), dtype=float)
+
+    n_segments = max(1, int(np.ceil(arc_len / d)))
+    t = np.linspace(0.0, 1.0, n_segments + 1)[1:-1]
+    if t.size == 0:
+        return np.empty((0, 2), dtype=float)
+
+    angles = theta * t
+    c = np.cos(angles)
+    s = np.sin(angles)
+
+    points = np.column_stack((
+        c * u1[0] - s * u1[1],
+        s * u1[0] + c * u1[1],
+    )) * r1
+
+    return points

@@ -1,7 +1,7 @@
 
 import numpy as np
 from scipy.interpolate import Rbf, CubicSpline
-from Capstone.Geometry import circumference, normals, magn, pol2cart, cart2pol
+from Capstone.Geometry import circumference, normals, magn, pol2cart, cart2pol, slerp
 from Capstone.Rockets.Harvester import Harvester
 
 
@@ -164,7 +164,7 @@ def rarefactions(I, X, Y, d = 0.1):
 
     quantiles = np.sum(m[:, None] > m, axis=1) / (len(m) - 1)
     # only take the points in the top 2% of segment lengths, e.g points that diverged the most
-    divergents = (m > 2*d) & (quantiles > .98) 
+    divergents = (m > d) & (quantiles > .98) 
 
     return divergents
 
@@ -174,12 +174,20 @@ def interpolate(XY, xy):
     xi,_ = np.split(xy,2, axis=1)
     # TODO: option to choose interpolation method in simulation settings.
     # rbf = Rbf(x, y)
-    rbf = CubicSpline(x.squeeze(), y.squeeze())
+    rbf = Rbf(x.squeeze(), y.squeeze())
     yi = rbf(xi)
+
+    if (np.abs(yi) > 5).sum() > 0:
+        print(xy)
     return np.concatenate((xi,yi), axis = 1)
 
 
 def fill(I, X, Y, divergents, d,  method = 'dumb'):
+
+    avl_methods = ['dumb', 'manydumb', 'interp', 'slerp']
+
+    if method not in avl_methods:
+        raise ValueError("method must be one of " + str(avl_methods))
 
     XY = np.stack((X,Y), axis=1)
     # n = XY.shape[0]
@@ -204,6 +212,10 @@ def fill(I, X, Y, divergents, d,  method = 'dumb'):
 
         dividx = I[divergents]
 
+
+        if any(l > 1):
+            print("oops")
+
         # cubXY = np.zeros((0,2))
         newXY = np.zeros((0,2))
         newI = np.zeros(0)
@@ -214,10 +226,20 @@ def fill(I, X, Y, divergents, d,  method = 'dumb'):
             wat = np.dot(j,hi[[i],:])
             
             xy = XY[rr,:] + wat / jj[i]
+            
+            # xyl = xy.copy()
+
+            # if (xy > 5).sum() > 0:
+            #     print(xyl)
 
             if method == 'interp':
                 slc = cslice(rr-3,rr+3, XY.shape[0])
                 xy = interpolate(XY[slc,:], xy)
+
+            if method == 'slerp':
+                # not working! 
+                f,t = cslice(rr-1,rr+1, XY.shape[0])
+                xy = slerp(XY[f,:], XY[t,:], d)
 
 
             newXY = np.concatenate((newXY, xy), axis=0)
@@ -341,6 +363,10 @@ def run(func, d = .011, steps = 1, n = 1000, hr = 4 ):
         print("step:", s, "points:", X.shape)
 
         I, X, Y, A, IsNew, C = step(I, X, Y, A, IsNew, d, hr, s)
+
+        if sum(X.shape) > n * 20 :
+            print("too many points, stopping simulation")
+            break
 
         HSsim.collect(locals())
         if sum(A) == 0:
