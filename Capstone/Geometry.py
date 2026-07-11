@@ -71,6 +71,39 @@ def normals(X, Y, ):
     return Nx, Ny
 
 
+def intersections(c0, v0, c_block, v_block):
+    C = c_block - c0
+
+        # denominators
+    den = np.cross(v0, v_block)
+
+        # numerators
+    num_ti = np.cross(C, v_block)
+
+    num_tj = np.cross(C, v0)
+
+    with np.errstate(divide='ignore', invalid='ignore'):
+        ti = num_ti / den
+        tj = num_tj / den
+
+    valid = den != 0
+    return ti,tj,valid
+
+
+def cslice(start, stop, n):
+    """circular slice. like a clock
+
+    Args:
+        n (int): total amt of items in circular array
+        start (int): start position of slice
+        stop (int): stop position of slice
+
+    Returns:
+        list: indices to extract
+    """
+    res = np.arange(start, stop) % n
+    return res
+
 # Convert between Cartesian/Polar coordinates
 
 def arc_lens(X,Y):

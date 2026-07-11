@@ -14,13 +14,40 @@ class Harvester:
         self.storage = {vn:[] for vn in varnames}
 
 
+    def get(self, fnlocals, vn):
+        """if var name contains a dot, it is assumed to be a var.attribute.
+        Extract this attribute
+
+        Args:
+            fnlocals (_type_): _description_
+            vn (_type_): _description_
+
+        Raises:
+            ValueError: _description_
+
+        Returns:
+            _type_: _description_
+        """
+        if ("." in vn):
+            pth = vn.split(".")
+            if len(pth) > 2:
+                raise ValueError("attributes of depth more than 2 not supported yet")    
+            var, atr = pth
+            varbl = fnlocals[var].__getattribute__(atr)
+            return varbl
+        else:
+            return fnlocals[vn]
+
+
     def collect(self, fnlocals):
+
         #TODO: validate that all variables that we want to collect are of the same size. 
         # Or size 1 - for scalar metrics such as circumference at step, etc.
         size = 1 
         scalars = {}
         for vn in self.varnames:
-            varbl = fnlocals[vn]
+
+            varbl = self.get(fnlocals,vn)
 
             # if var is scalar - put it aside to later add as repeated
             if np.isscalar(varbl):
@@ -65,8 +92,19 @@ class Harvester:
             else:
                 self.storage[k] = [deepcopy(v)]
 
-    def results(self, **kwargs):
-        store = {vn: np.concatenate(vals,axis=0) for vn, vals in self.storage.items()}
+    def results(self, extract_attrs = True, **kwargs):
+        """Returns the harvested data
+
+        Args:
+            extract_attrs (bool, optional): rename var.attribute data to just attribute. Defaults to True.
+
+        Returns:
+            _type_: _description_
+        """
+
+        e = lambda k: k.split(".")[-1] if extract_attrs else k
+
+        store = {e(vn): np.concatenate(vals,axis=0) for vn, vals in self.storage.items()}
 
         if kwargs:
             # kwargs = {"S":(5,6)}

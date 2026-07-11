@@ -18,7 +18,7 @@ def shape(item):
 def describe(subst):
     fmt = "{n} {s}: {t}"
     summ = [fmt.format(n=k, t=type(v), s= shape(v) ) for k,v in subst.items() ]
-    print(*summ, sep='\n')
+    print(*summ, sep='\n', end = "\n\n")
 
 
 def clip(vars, indcs = slice(None)):

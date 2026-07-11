@@ -7,7 +7,7 @@ from Capstone.Geometry import pol2cart
 
 def dots_and_arrows(I, X, Y, Ex, Ey, Px, Py, clas, filt, **kwargs):
     Ax, Ay = Ex - X, Ey - Y
-    isNew = kwargs['isNew']
+    isNew = kwargs['IsNew']
     fig = ff.create_quiver(X, Y, Ax, Ay, scale=1, arrow_scale=.05, name='offset',hovertext=I)
     fig.add_trace(go.Scatter(x=Px, y=Py, mode='markers',
                              marker=dict(size=6, color = clas*1, symbol = 'x') ,
