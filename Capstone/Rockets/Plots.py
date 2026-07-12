@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import plotly.figure_factory as ff
 import plotly.graph_objects as go
 import plotly.express as px
@@ -42,6 +43,45 @@ def Interactive_polar(df):
                         width=600, height=600
                         )
     fig.show()
+
+
+def animate(HSdata, SIM, save_path=None):
+
+    dfData = pd.DataFrame(HSdata)
+    dfData.loc[dfData.I == 42,"IsNew"] = 1.0 # so the animation has both colors in the frames
+    dfData["IsNew"] = dfData.IsNew.astype(bool)
+
+    sddf = pd.DataFrame( {"Hx": SIM.Hx, "Hy": SIM.Hy})
+    
+    #R upper bound
+    Rub = np.ceil(SIM.Hx.max()) 
+
+    fig = px.scatter(dfData, x="X", y="Y", 
+                         color="IsNew", 
+                        range_x=[-Rub,Rub], range_y=[-Rub,Rub],
+                        hover_data=["I"],
+                        animation_frame="SimStep",
+                        #name = "Front",
+                        # direction= "counterclockwise", start_angle=0,
+                        #color_discrete_sequence=px.colors.sequential.Plasma_r, 
+                        #template="plotly_dark",)
+                        width=700, height=600,
+                        render_mode="SVG"
+                        )
+    f2 = px.line(sddf, x='Hx', y='Hy', title='Hull')
+    fig.add_traces(f2.data)
+
+    fig.update_yaxes(
+        scaleanchor = "x",
+        scaleratio = 1
+        )
+
+    if save_path is not None:
+        fig.write_html(save_path)
+    else:
+        fig.show()
+    return dfData
+
 
 
 def Shape(R, T):

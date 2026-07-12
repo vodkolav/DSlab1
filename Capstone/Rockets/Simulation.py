@@ -83,6 +83,9 @@ class Lagrangian:
 
         filt = np.zeros(n).astype(bool)
 
+        newXY = np.zeros((0,2))
+        newI = np.zeros(0)
+
 
         for i in range(0, n , 1):
 
@@ -114,15 +117,17 @@ class Lagrangian:
                 filt[sl] = True
 
 
-            P = c0 + np.stack((ti,ti), axis=1) * v0
+                newXY = np.concatenate((newXY, XY[j:j+1,:]), axis=0)
+                newI = np.concatenate((newI, [j]), axis=0)
 
+            P = c0 + np.stack((ti,ti), axis=1) * v0
             Px = P[:,0]
             Py = P[:,1]
             ii = np.ones_like(ti)*i
 
             HSintersections.collect(locals())
 
-        return filt
+        return filt, newI.astype(int), newXY[:,0], newXY[:,1]
 
 
     # rarefactions: 
@@ -247,21 +252,38 @@ class Lagrangian:
         N = np.stack((Nx, Ny), axis=1)  # (n,2)
 
 
-        filt = self.curve_intersections(E, N) # *(1+s*0.1)
+        filt, iI, iX, iY  = self.curve_intersections(E, N) # *(1+s*0.1)
         
         # filt is True where the points should be filtered out / dropped
 
+        HScurves.collect(locals())
+
+
+
+        isNew1 = np.zeros_like(I)
+
+        X1 = np.insert(Ex, iI[:-1], iX[:-1], axis=0)
+        Y1 = np.insert(Ey, iI[:-1], iY[:-1], axis=0)
+
+        iF = np.zeros_like(iI)
+        F1 = np.insert(filt, iI[:-1], iF[:-1], axis=0)
+        
+        news = np.ones_like(iI)
+        isNew1 = np.insert(isNew1, iI[:-1], news[:-1], axis=0)
+
         if filt.size != 0:
-            X1 = Ex[~filt]
-            Y1 = Ey[~filt]
-            I1 = np.arange(X1.shape[0])
+            X1 = X1[~F1]
+            Y1 = Y1[~F1]
+            isNew1 = isNew1[~F1]
+
+        I1 = np.arange(X1.shape[0])
 
         divergents = self.rarefactions(I1, X1, Y1)
 
         newI, newX, newY =  self.fill(I1, X1, Y1, divergents )
 
         news = np.ones_like(newI)
-        isNew1 = np.zeros_like(X1)
+
 
 
         # TODO: make this a single array operation instead of 3 separate ones
@@ -269,15 +291,14 @@ class Lagrangian:
         Y1 = np.insert(Y1, newI[:-1], newY[:-1], axis=0)
         I1 = np.arange(X1.shape[0])
 
+        self.IsNew = np.insert(isNew1, newI[:-1], news[:-1], axis=0)
+
 
         A1 = self.active(X1,Y1)
 
         # S = np.ones_like(A)*s
         C = circumference(X1*A1,Y1*A1)
 
-        HScurves.collect(locals())
-
-        self.IsNew = np.insert(isNew1, newI[:-1], news[:-1], axis=0)
 
         return I1, X1, Y1, A1, C
 
