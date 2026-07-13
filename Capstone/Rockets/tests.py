@@ -2,15 +2,15 @@
 
 from Capstone.Rockets.Plots import animate
 from Capstone.Rockets.Simulation import Lagrangian
-from Capstone.Rockets.Simulation import HScurves, HSintersections, HSsim
+# from Capstone.Rockets.Simulation import HScurves, HSintersections, HSsim
 
 from Capstone.Superformula.Formulas import formula1, formula2
 
 
-d = .1
-steps = 10
+d = .07
+steps = 50
 n = 1000
-window_size = 50
+window_size = 70
 hull_radius = 4
 interp = 'manydumb'
 
@@ -38,9 +38,9 @@ SIM.run(steps)
 print("Simulation completed.")
 
 
-HSdata = HScurves.results()
-HSintrsctns = HSintersections.results()
-HSsimdata = HSsim.results()
+HSdata = SIM.HScurves.results()
+HSintrsctns = SIM.HSintersections.results()
+HSsimdata = SIM.HSsim.results()
 
 Hull = {"Hx": SIM.Hx, "Hy": SIM.Hy}
 

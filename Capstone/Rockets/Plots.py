@@ -14,14 +14,21 @@ def dots_and_arrows(I, X, Y, Ex, Ey, Px, Py, clas, filt, **kwargs):
                              marker=dict(size=6, color = clas*1, symbol = 'x') ,
                              hovertext = clas,
                              name='window_hits'))
-    fig.add_trace(go.Scatter(x=X, y=Y, mode='lines', marker=dict(size=6, color=filt*1),
+    
+    stat = (isNew * 2 + filt)
+
+    colr = {0:"blue", 1: "red", 2:"green", 3:"purple"}
+
+    stat = [colr[i] for i in stat]
+
+    fig.add_trace(go.Scatter(x=X, y=Y, mode='lines', marker=dict(size=4, color=filt*1),
                               hovertext=I, name='XY'))
-    fig.add_trace(go.Scatter(x=Ex, y=Ey, mode='markers', marker=dict(size=6, color=isNew*1),
+    fig.add_trace(go.Scatter(x=Ex, y=Ey, mode='markers', marker=dict(size=4, color=stat),
                              hovertext=I, name='ExEy'))
     
     Hx = kwargs['Hx']
     Hy = kwargs['Hy']
-    fig.add_trace(go.Scatter(x=Hx, y=Hy, mode='lines', marker=dict(size=6, color=filt*1),
+    fig.add_trace(go.Scatter(x=Hx, y=Hy, mode='lines', marker=dict(size=4, color=filt*1),
                              name='Hull'))
 
     fig.update_layout(width=800, height=800)
@@ -45,11 +52,15 @@ def Interactive_polar(df):
     fig.show()
 
 
-def animate(HSdata, SIM, save_path=None):
+def animate(HSdata, SIM):
 
     dfData = pd.DataFrame(HSdata)
     dfData.loc[dfData.I == 42,"IsNew"] = 1.0 # so the animation has both colors in the frames
     dfData["IsNew"] = dfData.IsNew.astype(bool)
+
+    dfData["stat"] = (dfData.IsNew * 2 + dfData.filt).astype(str)
+
+    dfData.sort_values(["SimStep", "I", "stat"],inplace=True)
 
     sddf = pd.DataFrame( {"Hx": SIM.Hx, "Hy": SIM.Hy})
     
@@ -57,14 +68,15 @@ def animate(HSdata, SIM, save_path=None):
     Rub = np.ceil(SIM.Hx.max()) 
 
     fig = px.scatter(dfData, x="X", y="Y", 
-                         color="IsNew", 
+                        color="stat", 
                         range_x=[-Rub,Rub], range_y=[-Rub,Rub],
-                        hover_data=["I"],
-                        animation_frame="SimStep",
+                        hover_data=["I"],                        
+                        animation_frame="SimStep", 
                         #name = "Front",
                         # direction= "counterclockwise", start_angle=0,
                         #color_discrete_sequence=px.colors.sequential.Plasma_r, 
                         #template="plotly_dark",)
+                        category_orders={"stat": ["0", "1", "2", "3"]},
                         width=700, height=600,
                         render_mode="SVG"
                         )
@@ -75,11 +87,8 @@ def animate(HSdata, SIM, save_path=None):
         scaleanchor = "x",
         scaleratio = 1
         )
-
-    if save_path is not None:
-        fig.write_html(save_path)
-    else:
-        fig.show()
+    fig.update_traces(marker=dict(size=4))
+    fig.show()
     return dfData
 
 

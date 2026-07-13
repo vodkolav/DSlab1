@@ -39,19 +39,14 @@ def normals(X, Y, ):
     X = np.concatenate([X[-tail:], X, X[:tail]])
     Y = np.concatenate([Y[-tail:], Y, Y[:tail]])
 
-    Gy = np.gradient(Y, X)
+    Gy = np.gradient(Y)
 
     #Check if any gradients got inf or nan
     #assert sum(np.isnan(Gy)) == 0
 
     #Gx = np.gradient(X, Y) # this should give us an array of 1s, since the gradient of X with respect to itself is 1.
 
-    Gx = np.ones_like(Gy) # not sure this is correct btw.
-    # Gx are all 1s assumes the curve Y is a function of X, which is an axis with uniform spacing.
-    # But in our case, the X and Y are both functions of theta, since they are generated from a polar coordinate system,
-    # So, the assumption may not hold, and the normals may not be accurate. 
-    # And that is probably why in some regions the normals don't look perpendicular to the curve in the plot.
-
+    Gx = np.gradient(X)
     # Calculate normals
     L = magn(Gx, Gy)
     Nx, Ny = -Gy/L, Gx/L 

@@ -5,16 +5,6 @@ from Capstone.Geometry import circumference, normals, magn, cslice, pol2cart, ca
 from Capstone.Rockets.Harvester import Harvester
 
 
-HSsim = Harvester(["self.SimStep", "C"])
-
-HSintersections = Harvester(varnames=["self.SimStep", "ii", "ti", "tj", "Px", "Py",
-                                        "clas", "condi", "condj"],
-                            elems='valid')
-
-HScurves = Harvester(varnames=["self.I", "self.X", "self.Y", "self.A", "self.IsNew",
-                               "self.SimStep", "Nx", "Ny", "Ex", "Ey", "filt"], 
-                    on_size_mismatch='error')
-                            #"I1","X1", "Y1", circ, , "isNew" 
 
 
 class Lagrangian:
@@ -65,6 +55,16 @@ class Lagrangian:
         self.Hx, self.Hy = pol2cart(Hr, self.T)
         
 
+        self.HSsim = Harvester(["self.SimStep", "C"])
+
+        self.HSintersections = Harvester(varnames=["self.SimStep", "i", "ti", "tj", "Px", "Py",
+                                                "clas", "condi", "condj"],
+                                        elems='valid')
+
+        self.HScurves = Harvester(varnames=["self.I", "self.X", "self.Y", "self.A", "self.IsNew",
+                                    "self.SimStep", "Nx", "Ny", "Ex", "Ey", "filt"], 
+                                    on_size_mismatch='error')
+                                    #"I1","X1", "Y1", circ, , "isNew" 
 
 
 
@@ -104,28 +104,29 @@ class Lagrangian:
             ti, tj, valid = intersections(c0, v0, c_block, v_block) 
             # valid = valid & (((l < ti) & (ti  < u)) | ((l < tj ) & (tj < u)))
 
-            condi = (0 <= ti) & (ti < 1)
-            condj = (0 <= tj) & (tj < 1)
+            condi = (0 <= ti) & (ti <= 1)
+            condj = (0 <= tj) & (tj <= 1)
 
             valid = valid & condi & condj
 
             clas = valid*1 + condi*1 * condj*1
 
+            P = c0 + np.stack((ti,ti), axis=1) * v0
+            Px = P[:,0]
+            Py = P[:,1]
+
             if any(condi & condj):
-                j = i + 2 + np.min(np.where(condi & condj))
+                j_block = np.min(np.where(condi & condj))
+                j = i + 2 + j_block
                 sl = cslice(i,j,n)
                 filt[sl] = True
 
 
-                newXY = np.concatenate((newXY, XY[j:j+1,:]), axis=0)
+                newXY = np.concatenate((newXY, P[j_block:j_block+1,:]), axis=0)
                 newI = np.concatenate((newI, [j]), axis=0)
 
-            P = c0 + np.stack((ti,ti), axis=1) * v0
-            Px = P[:,0]
-            Py = P[:,1]
-            ii = np.ones_like(ti)*i
 
-            HSintersections.collect(locals())
+            self.HSintersections.collect(locals())
 
         return filt, newI.astype(int), newXY[:,0], newXY[:,1]
 
@@ -147,7 +148,7 @@ class Lagrangian:
 
         quantiles = np.sum(m[:, None] > m, axis=1) / (len(m) - 1)
         # only take the points in the top 2% of segment lengths, e.g points that diverged the most
-        divergents = (m > self.d) & (quantiles > .98) 
+        divergents = (m > self.d) & (quantiles > .95) 
 
         return divergents
 
@@ -256,20 +257,20 @@ class Lagrangian:
         
         # filt is True where the points should be filtered out / dropped
 
-        HScurves.collect(locals())
+        self.HScurves.collect(locals())
 
 
 
         isNew1 = np.zeros_like(I)
 
-        X1 = np.insert(Ex, iI[:-1], iX[:-1], axis=0)
-        Y1 = np.insert(Ey, iI[:-1], iY[:-1], axis=0)
+        X1 = np.insert(Ex, iI, iX, axis=0)
+        Y1 = np.insert(Ey, iI, iY, axis=0)
 
-        iF = np.zeros_like(iI)
-        F1 = np.insert(filt, iI[:-1], iF[:-1], axis=0)
+        iF = np.zeros_like(iI).astype(bool)
+        F1 = np.insert(filt, iI, iF, axis=0)
         
         news = np.ones_like(iI)
-        isNew1 = np.insert(isNew1, iI[:-1], news[:-1], axis=0)
+        isNew1 = np.insert(isNew1, iI, news, axis=0)
 
         if filt.size != 0:
             X1 = X1[~F1]
@@ -287,11 +288,11 @@ class Lagrangian:
 
 
         # TODO: make this a single array operation instead of 3 separate ones
-        X1 = np.insert(X1, newI[:-1], newX[:-1], axis=0)
-        Y1 = np.insert(Y1, newI[:-1], newY[:-1], axis=0)
+        X1 = np.insert(X1, newI, newX, axis=0)
+        Y1 = np.insert(Y1, newI, newY, axis=0)
         I1 = np.arange(X1.shape[0])
 
-        self.IsNew = np.insert(isNew1, newI[:-1], news[:-1], axis=0)
+        self.IsNew = np.insert(isNew1, newI, news, axis=0)
 
 
         A1 = self.active(X1,Y1)
@@ -338,7 +339,7 @@ class Lagrangian:
                 print("too many points, stopping simulation")
                 break
 
-            HSsim.collect(locals())
+            self.HSsim.collect(locals())
             if sum(self.A) == 0:
                 print("everything's burnt")
                 break
