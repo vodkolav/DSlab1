@@ -45,7 +45,8 @@ class Lagrangian:
         #Variables
         self.SimStep=0
         self.I, self.R, self.T, self.X, self.Y = self.grain(func, self.n)
-        #hr = 4 # hull radius
+
+        self.I, self.X, self.Y = self.fill_holes(self.I, self.X, self.Y)
 
         self.IsNew = np.zeros_like(self.I)
         
@@ -57,7 +58,7 @@ class Lagrangian:
 
         self.HSsim = Harvester(["self.SimStep", "C"])
 
-        self.HSintersections = Harvester(varnames=["self.SimStep", "i", "ti", "tj", "Px", "Py",
+        self.HSintersections = Harvester(varnames=["self.SimStep", "i", "j", "ti", "tj", "Px", "Py",
                                                 "clas", "condi", "condj"],
                                         elems='valid')
 
@@ -88,7 +89,7 @@ class Lagrangian:
 
 
         for i in range(0, n , 1):
-
+            j = 0 
             c0 = c[i]            # (2,)
             v0 = v[i]            # (2,)
 
@@ -107,9 +108,9 @@ class Lagrangian:
             condi = (0 <= ti) & (ti <= 1)
             condj = (0 <= tj) & (tj <= 1)
 
-            valid = valid & condi & condj
+            clas = valid*1 + condi*2 + condj*3
 
-            clas = valid*1 + condi*1 * condj*1
+            valid = valid & condi & condj
 
             P = c0 + np.stack((ti,ti), axis=1) * v0
             Px = P[:,0]
@@ -128,7 +129,7 @@ class Lagrangian:
 
             self.HSintersections.collect(locals())
 
-        return filt, newI.astype(int), newXY[:,0], newXY[:,1]
+        return filt, (newI % n).astype(int), newXY[:,0], newXY[:,1]
 
 
     # rarefactions: 
@@ -245,7 +246,7 @@ class Lagrangian:
         Ex, Ey =  X + self.d * A * Nx , Y + self.d * A * Ny
 
         # I = np.asarray(I).ravel()
-        if not (X.size == Y.size == Nx.size == Ny.size):
+        if not (X.size == Y.size == Nx.size == Ny.size == I.size):
             raise ValueError('All inputs must have same length')
 
         # Prepare arrays
@@ -272,7 +273,7 @@ class Lagrangian:
         news = np.ones_like(iI)
         isNew1 = np.insert(isNew1, iI, news, axis=0)
 
-        if filt.size != 0:
+        if filt.size != 0: #TODO should check if filt has any True instead
             X1 = X1[~F1]
             Y1 = Y1[~F1]
             isNew1 = isNew1[~F1]
@@ -313,6 +314,17 @@ class Lagrangian:
         R = func(T)
         X, Y = pol2cart(R, T)
         return I, R, T, X, Y 
+
+
+    def fill_holes(self, I, X, Y):
+        divergents = self.rarefactions(I, X, Y)
+
+        newI, newX, newY =  self.fill(I, X, Y, divergents )
+
+        X = np.insert(X, newI, newX, axis=0)
+        Y = np.insert(Y, newI, newY, axis=0)
+        I = np.arange(X.shape[0])
+        return I, X, Y
 
 
     def run(self, steps = 1):

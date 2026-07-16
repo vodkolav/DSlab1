@@ -47,17 +47,17 @@ def formula1(funcname:str = "superformula",
 
     "abs"         : lambda phi: abs(m*phi/(2*pi)) + s,  
 
-    "rombus?"     : lambda phi: a / (cos(pi*m/4 - ((s + phi) % (2*pi*m/4)))),
+    "rombus"      : lambda phi: a / (cos(pi*m/4 - ((s + phi) % (2*pi*m/4)))),
 
-    "sea star"    : lambda phi: a/2 * (cos(m*phi) + 1),
+    "sea-star"    : lambda phi: a/2 * (cos(m*phi) + 1),
 
     "risingsun"   : lambda phi: a/2 * (sign(sin(m*phi)) + 1) ,
 
     "sunflower"   : lambda phi: a*2 * abs(m*phi/(2*pi) - floor(m*phi/(2*pi) + 1/2)) ,
     
-    "square wave" : lambda phi: sin(m*phi) /(10**-a * abs(sin(m*phi))),  
+    "square-wave" : lambda phi: sin(m*phi) /(10**-a * abs(sin(m*phi))),  
 
-    "trapez wave" : lambda phi: a   * ((arccos(cos(m*phi+s)) + arcsin(sin(m*phi+s)))/pi) ,
+    "trapez-wave" : lambda phi: a   * ((arccos(cos(m*phi+s)) + arcsin(sin(m*phi+s)))/pi) ,
 
     "trapezoid"   : lambda phi: trapzoid_signal(phi, width=4/m, slope=n_1, amp=a),
 
@@ -65,13 +65,17 @@ def formula1(funcname:str = "superformula",
 
     }
 
+    check = [" " not in k for k in selection.keys()]
+
+    assert all(check)
+
     # mod = 1
     #mod = lambda phi : abs(cos(phi*m))
     #r = mod(r)
     
     if funcname is None or funcname not in selection.keys():
         # return all available options of the funcname
-        return list(selection.keys())
+        raise ValueError( f"we have no funcname {funcname}. Available functions are: " + str(selection.keys()))
 
     chosen = selection[funcname]
 

@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import plotly.figure_factory as ff
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import plotly.express as px
 
 from Capstone.Geometry import pol2cart
@@ -52,7 +53,9 @@ def Interactive_polar(df):
     fig.show()
 
 
-def animate(HSdata, SIM):
+def animate(SIM, save_path=None):
+
+    HSdata = SIM.HScurves.results()
 
     dfData = pd.DataFrame(HSdata)
     dfData.loc[dfData.I == 42,"IsNew"] = 1.0 # so the animation has both colors in the frames
@@ -80,17 +83,113 @@ def animate(HSdata, SIM):
                         width=700, height=600,
                         render_mode="SVG"
                         )
-    f2 = px.line(sddf, x='Hx', y='Hy', title='Hull')
-    fig.add_traces(f2.data)
+    hull_trace = go.Scatter(
+        x=sddf["Hx"],
+        y=sddf["Hy"],
+        mode="lines",
+        name="Hull",
+        line=dict(color="black", width=2),
+        hoverinfo="skip",
+    )
+    fig.add_trace(hull_trace)
+
+    for frame in fig.frames:
+        frame.data = list(frame.data) + [
+            go.Scatter(
+                x=sddf["Hx"],
+                y=sddf["Hy"],
+                mode="lines",
+                name="Hull",
+                line=dict(color="black", width=2),
+                hoverinfo="skip",
+            )
+        ]
 
     fig.update_yaxes(
         scaleanchor = "x",
         scaleratio = 1
         )
     fig.update_traces(marker=dict(size=4))
-    fig.show()
+    if save_path is not None:
+        fig.write_html(save_path, auto_play = False )
+
+    else:
+        fig.show()
     return dfData
 
+
+def WebAndPerf(SIM, save_path = None):
+    
+    HSdata = SIM.HScurves.results()
+
+    dfData = pd.DataFrame(HSdata)
+    #dfData.loc[dfData.I == 42,"IsNew"] = 1.0 # so the animation has both colors in the frames
+    dfData["IsNew"] = dfData.IsNew.astype(bool)
+
+    dfData["stat"] = (dfData.IsNew * 2 + dfData.filt).astype(str)
+
+    dfData.sort_values(["SimStep", "I", "stat"],inplace=True)
+
+    sddf = pd.DataFrame( {"Hx": SIM.Hx, "Hy": SIM.Hy})
+
+
+    #R upper bound
+    Rub = np.ceil(SIM.Hx.max()*1.01) 
+
+    
+    grain = px.line(dfData, x="X", y="Y",
+                        # color="stat", 
+                        range_x=[-Rub,Rub], range_y=[-Rub,Rub],
+                        hover_data=["I"],                        
+                        # direction= "counterclockwise", start_angle=0,
+                        #color_discrete_sequence=px.colors.sequential.Plasma_r, 
+                        #template="plotly_dark",)
+                        #category_orders={"stat": ["0", "1", "2", "3"]},
+                        # width=700, height=600,
+                         render_mode="SVG"
+                        )
+    
+
+    hull_trace = go.Scatter(
+        x=sddf['Hx'],
+        y=sddf['Hy'],
+        mode='lines',
+        name='Hull',
+        line=dict(color='black', width=2),
+        hoverinfo='skip',
+        showlegend=False
+    )
+
+    dfSim = pd.DataFrame(SIM.HSsim.results())
+    perf = px.line(dfSim, x = 'SimStep', y = 'C', render_mode="SVG",)
+
+    fig = make_subplots(subplot_titles=('Web burned', 'Performance (Steps vs. Curcumfernce)' ), rows=1, cols=2)
+
+    for trace in grain.data:
+        fig.add_trace(trace, row=1, col=1)
+
+    fig.add_trace(hull_trace, row=1, col=1)
+
+    for trace in perf.data:
+        fig.add_trace(trace, row=1, col=2)
+
+    fig.update_yaxes(title_text='Y', row=1, col=1, scaleanchor = 'x', scaleratio=1)
+
+    # fig.update_layout(yaxis_range = [-Rmax, Rmax], xaxis_range = [-Rmax, Rmax], **self.conf("layout"))
+    
+    # 5) Optional layout tweaks
+    fig.update_layout(width=1200, height=600, margin=dict(l=50, r=50, t=50, b=10))
+    fig.update_yaxes(scaleanchor="x", scaleratio=1, row=1, col=1)
+
+    fig.update_traces(marker=dict(size=1))
+
+    if save_path is not None:
+        
+        fig.write_html(save_path, auto_play = False )
+
+    else:
+        fig.show()
+    return dfData
 
 
 def Shape(R, T):
