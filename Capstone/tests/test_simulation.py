@@ -1,10 +1,10 @@
 
 
-from Capstone.Rockets.Plots import animate
-from Capstone.Rockets.Simulation import Lagrangian
+from Rockets import animate
+from Rockets.Simulation.Simulation import Lagrangian
 # from Capstone.Rockets.Simulation import HScurves, HSintersections, HSsim
 
-from Capstone.Superformula.Formulas import formula1, formula2
+from Rockets.Superformula.Formulas import formula1, formula2
 
 
 d = .07

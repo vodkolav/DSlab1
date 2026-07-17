@@ -3,11 +3,11 @@
 import numpy as np
 import pandas as pd
 
-from Capstone.Rockets.Plots import dots_and_arrows, Interactive_polar, Shape
-from Capstone.Rockets.Simulation import step, run
-from Capstone.Superformula.Formulas import formula1, formula2
-from Capstone.Geometry import cart2pol, pol2cart, rad2deg, normals
-from Capstone.utils import describe, clip, shape, pick
+from Rockets.Simulation.Plots import dots_and_arrows, Interactive_polar, Shape
+# from Rockets.Simulation.Simulation import  step, run
+from Rockets.Superformula.Formulas import formula1, formula2
+from Rockets.Geometry import cart2pol, pol2cart, rad2deg, normals
+from Rockets.utils import describe, clip, shape, pick
 
 def profile2(theta):
     r = 10 / (np.cos(np.pi/4 - (theta % (np.pi/2))))
@@ -23,7 +23,7 @@ def profile1(theta):
 
 def test():
 
-    from Capstone.Rockets.Simulation import HScurves, HSintersections
+    from Rockets.Simulation import HScurves, HSintersections
 
     d = .11
     steps = 10

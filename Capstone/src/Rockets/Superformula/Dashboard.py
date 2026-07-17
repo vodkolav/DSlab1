@@ -6,7 +6,7 @@ import numpy as np
 
 from Formulas import formula1, formula2
 from Signature import analyze_function, dec_scale_2, exp_scale, to_si
-from Capstone import Geometry as G
+from Rockets.Geometry import pol2cart
 
 from dash import dcc
 from dash.dependencies import Input, Output
@@ -63,7 +63,7 @@ class DashboardManager:
         
         R = formula(T)
         Rmax = np.max(R) # makes plot ranges invariant to rotations
-        X, Y = G.pol2cart(R, T)
+        X, Y = pol2cart(R, T)
         fig = make_subplots(subplot_titles=('Y vs X', 'R vs T' ), **self.conf("subplots"))
 
         fig.add_trace(go.Scatter(x=X, y=Y, mode=mode, name='X(T), Y(T)'), row=1, col=1)

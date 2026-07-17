@@ -3,7 +3,7 @@ from dash import dcc, html
 from dash.dependencies import Input, Output, State
 
 
-from Dashboard import DashboardManager #draw, init_app
+from .Dashboard import DashboardManager #draw, init_app
 
 app = dash.Dash(__name__)
 

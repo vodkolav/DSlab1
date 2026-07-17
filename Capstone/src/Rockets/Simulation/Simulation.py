@@ -1,8 +1,8 @@
 
 import numpy as np
 from scipy.interpolate import Rbf, CubicSpline
-from Capstone.Geometry import circumference, normals, Magn, cslice, pol2cart, cart2pol, intersections, slerp
-from Capstone.Rockets.Harvester import Harvester
+from Rockets.Geometry import circumference, normals, Magn, cslice, pol2cart, cart2pol, intersections, slerp
+from Rockets.Simulation.Harvester import Harvester
 
 
 

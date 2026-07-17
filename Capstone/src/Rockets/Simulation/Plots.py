@@ -4,8 +4,7 @@ import plotly.figure_factory as ff
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import plotly.express as px
-
-from Capstone.Geometry import pol2cart
+from Rockets.Geometry import pol2cart
 
 def dots_and_arrows(I, X, Y, Ex, Ey, Px, Py, clas, filt, save_path = None, **kwargs):
     Ax, Ay = Ex - X, Ey - Y
