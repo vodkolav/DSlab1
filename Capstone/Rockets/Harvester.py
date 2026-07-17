@@ -92,12 +92,21 @@ class Harvester:
             else:
                 self.storage[k] = [deepcopy(v)]
 
-    def results(self, extract_attrs = True, **kwargs):
-        """Returns the harvested data
-
+    def results(self, extract_attrs = True, break_2d_vectors = True,  **kwargs):
+        """Returns the harvested data in the form of a dictionary where 
+            keys are variable names and values are the collected data, 
+            concatenated along individual collect()ions 
+            
+            Sometimes I want to harvest only some attributes of a variable, for ex. self.X 
+            'extract_attrs' returns their name as just "X", without the "self." part
+            
+            Some variables are stored as 2D arrays of size [n,2] for x,y. 
+            'break_2d_vectors' breaks them into separate x and y arrays so that they are easily read by pd.DataFrame()
+            
+            'kwargs' allows to filter the whole returned data by some of the collected variables
         Args:
             extract_attrs (bool, optional): rename var.attribute data to just attribute. Defaults to True.
-
+            break_2d_vectors: whether to break 2d vectors. 
         Returns:
             _type_: _description_
         """
@@ -105,6 +114,10 @@ class Harvester:
         e = lambda k: k.split(".")[-1] if extract_attrs else k
 
         store = {e(vn): np.concatenate(vals,axis=0) for vn, vals in self.storage.items()}
+
+        if break_2d_vectors:
+            tmp = [self.break_2D_vec(k,v) for k,v in store.items()]
+            store = {k: v for d in tmp for k, v in d.items()}
 
         if kwargs:
             # kwargs = {"S":(5,6)}
@@ -115,3 +128,27 @@ class Harvester:
             return outpt
         
         return store
+
+
+    def break_2D_vec(self, k, XY):
+        """Breaks 2D vectors into 2 1D vectors.
+           If it's already 1d, returned as is
+
+        Args:
+            k (name): name of vector
+            XY (np.array): the vector
+
+        Returns:
+            dict: dict with 1 or 2 broken 1d vectors
+        """
+        if len(k)>1:
+            nx, ny = [k[0],k[1]]
+        else:
+            nx, ny = [k + "x", k + "y"]
+
+        if len(XY.shape)>1:
+            X,Y = np.split(XY,2,axis=1)
+            return {nx: X.squeeze(), ny: Y.squeeze()}
+        else:
+            return {k: XY}
+    

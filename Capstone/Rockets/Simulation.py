@@ -1,7 +1,7 @@
 
 import numpy as np
 from scipy.interpolate import Rbf, CubicSpline
-from Capstone.Geometry import circumference, normals, magn, cslice, pol2cart, cart2pol, intersections, slerp
+from Capstone.Geometry import circumference, normals, Magn, cslice, pol2cart, cart2pol, intersections, slerp
 from Capstone.Rockets.Harvester import Harvester
 
 
@@ -42,19 +42,25 @@ class Lagrangian:
         # TODO: validations of func and casing size
 
 
+        # Caching variables
+        
+        # segment direction vectors; size: [n,2]
+        self.S = []
+
         #Variables
         self.SimStep=0
-        self.I, self.R, self.T, self.X, self.Y = self.grain(func, self.n)
+        self.I, self.RT, self.XY = self.grain(func, self.n)
 
-        self.I, self.X, self.Y = self.fill_holes(self.I, self.X, self.Y)
+        # XY = np.stack((self.X,self.Y), axis=1)
+        self.segments(self.XY)
+        self.I, self.XY = self.fill_holes(self.I, self.XY)
 
         self.IsNew = np.zeros_like(self.I)
         
-        self.A = self.active(self.X, self.Y)
+        self.A = self.active(self.XY)
 
-        Hr = np.ones_like(self.T)*self.hr
-        self.Hx, self.Hy = pol2cart(Hr, self.T)
-        
+        # Hr = np.ones_like(self.T)*self.hr
+        # self.Hx, self.Hy = pol2cart(Hr, self.T)
 
         self.HSsim = Harvester(["self.SimStep", "C"])
 
@@ -62,14 +68,18 @@ class Lagrangian:
                                                 "clas", "condi", "condj"],
                                         elems='valid')
 
-        self.HScurves = Harvester(varnames=["self.I", "self.X", "self.Y", "self.A", "self.IsNew",
-                                    "self.SimStep", "Nx", "Ny", "Ex", "Ey", "filt"], 
+        self.HScurves = Harvester(varnames=["self.I", "self.XY", "self.A", "self.IsNew",
+                                    "self.SimStep", "N", "E", "filt"], 
                                     on_size_mismatch='error')
                                     #"I1","X1", "Y1", circ, , "isNew" 
 
 
+    def segments(self, XY):
+        Ends = np.concatenate((XY[-1:,:],XY[:-1,:]), axis=0) # segment end points 
+        self.S = Ends - XY # segment direction vectors
 
-    def curve_intersections(self, XY, N):
+
+    def curve_intersections(self, XY):
         """Find intersections within sliding windows.
         For each window start, test the first ray (index i=start) against all following rays in the window.
         Return compact arrays of hits (i, j, ti, tj, Px, Py)."""
@@ -77,26 +87,23 @@ class Lagrangian:
 
         n = XY.shape[0]
 
-        c = XY # segment start points
+        # XY = XY # segment start points
 
-        c1 = np.concatenate((c[-1:,:],c[:-1]), axis=0) # segment end points 
-        v = c1 - c # segment direction vectors
 
         filt = np.zeros(n).astype(bool)
-
         newXY = np.zeros((0,2))
         newI = np.zeros(0)
 
 
         for i in range(0, n , 1):
             j = 0 
-            c0 = c[i]            # (2,)
-            v0 = v[i]            # (2,)
+            c0 = XY[i]            # segment origin
+            v0 = self.S[i]        # segment direction
 
             sl = cslice(i+2, i+self.window_size, n)
 
-            c_block = c[sl] 
-            v_block = v[sl] 
+            c_block = XY[sl] # segments origin
+            v_block = self.S[sl] # segments direction
             # rest of the vectors in window (shifted by 2 to avoid adjacent segments)
             # Adjacent segments by definition intersect at their shared vertex, which is not a valid intersection for our purposes. 
             # By shifting by 2, we ensure that we are only checking for intersections between non-adjacent segments.
@@ -129,21 +136,23 @@ class Lagrangian:
 
             self.HSintersections.collect(locals())
 
-        return filt, (newI % n).astype(int), newXY[:,0], newXY[:,1]
+        return filt, (newI % n).astype(int), newXY
 
 
     # rarefactions: 
-    def rarefactions(self, I, X, Y):
+    def rarefactions(self):
         
-        XY = np.stack((X,Y), axis=1)
-        # n = XY.shape[0]
+        # XY = np.stack((X,Y), axis=1)
+        # # n = XY.shape[0]
 
-        c = XY # segment start points
+        # c = XY # segment start points
 
-        c1 = np.concatenate((c[-1:,:],c[:-1]), axis=0) # segment end points 
-        v = c1 - c # segment direction vectors    
+        # c1 = np.concatenate((c[-1:,:],c[:-1]), axis=0) # segment end points 
+        # v = c1 - c # segment direction vectors    
 
-        m = magn(v[:,0], v[:,1])
+        v = self.S
+
+        m = Magn(v)
 
         # isNew = np.zeros_like(X, dtype=bool)
 
@@ -167,25 +176,26 @@ class Lagrangian:
         return np.concatenate((xi,yi), axis = 1)
 
 
-    def fill(self, I, X, Y, divergents):
+    def fill(self, I, XY, divergents):
 
-        XY = np.stack((X,Y), axis=1)
+        #XY = np.stack((X,Y), axis=1)
         # n = XY.shape[0]
 
-        c = XY # segment start points
+        # c = XY # segment start points
 
-        c1 = np.concatenate((c[-1:,:],c[:-1]), axis=0) # segment end points 
-        v = c1 - c # segment direction vectors    
+        # c1 = np.concatenate((c[-1:,:],c[:-1]), axis=0) # segment end points 
+        # v = c1 - c # segment direction vectors    
+        # v = self.S
 
         if self.method == 'dumb':
                 # simplest interpolation: just add half the segment vector to the start point of the segment
-                newXY = XY[divergents] + v[divergents] * 0.5
+                newXY = XY[divergents] + self.S[divergents] * 0.5
                 newI = I[divergents]
         else:
             # add multiple points along the segment vector
             # direction vectors of divergents
             # hi = XY[divergents+1,:] - XY[divergents,:]
-            hi = v[divergents,:]
+            hi = self.S[divergents,:]
 
             l = np.sqrt(np.sum(hi**2,axis=1))
             jj = (l/self.d).astype(int)       
@@ -230,32 +240,41 @@ class Lagrangian:
             newI = newI.astype(int)
             newI, newXY
 
-        newX, newY =  newXY[:,0], newXY[:,1]
-        return newI, newX, newY
+        # newX, newY =  newXY[:,0], newXY[:,1]
+        return newI, newXY
 
 
-    def active(self, X, Y):
-        R,_ = cart2pol(X,Y)
+    def active(self, XY):
+        R = Magn(XY)
         A = R < self.hr
         return A
 
 
-    def step(self, I, X, Y, A):
-        Nx, Ny = normals(X, Y)
+    def step(self, I, XY, A):
 
-        Ex, Ey =  X + self.d * A * Nx , Y + self.d * A * Ny
+        # XY = np.stack((X,Y), axis=1)
+
+        Nx, Ny = normals(XY)
+
+        N = np.stack((Nx, Ny), axis=1)  # (n,2)
+
+        dd = np.ones([2,1]) * self.d
+        # dA = dd * A
+        # Ex, Ey =  X + self.d * A * Nx , Y + self.d * A * Ny
+        E =  XY + (dd * A).T * N
 
         # I = np.asarray(I).ravel()
-        if not (X.size == Y.size == Nx.size == Ny.size == I.size):
+        if not (XY.shape[0]  == N.shape[0] == I.shape[0]):
             raise ValueError('All inputs must have same length')
 
         # Prepare arrays
-        E = np.stack((Ex, Ey), axis=1)  # (n,2)
-        N = np.stack((Nx, Ny), axis=1)  # (n,2)
+        # E = np.stack((Ex, Ey), axis=1)  # (n,2)
+
+        self.segments(E)
+
+        filt, iI, iXY  = self.curve_intersections(E) # *(1+s*0.1)
 
 
-        filt, iI, iX, iY  = self.curve_intersections(E, N) # *(1+s*0.1)
-        
         # filt is True where the points should be filtered out / dropped
 
         self.HScurves.collect(locals())
@@ -264,8 +283,8 @@ class Lagrangian:
 
         isNew1 = np.zeros_like(I)
 
-        X1 = np.insert(Ex, iI, iX, axis=0)
-        Y1 = np.insert(Ey, iI, iY, axis=0)
+        XY1 = np.insert(E, iI, iXY, axis=0)
+        # Y1 = np.insert(Ey, iI, iY, axis=0)
 
         iF = np.zeros_like(iI).astype(bool)
         F1 = np.insert(filt, iI, iF, axis=0)
@@ -274,35 +293,36 @@ class Lagrangian:
         isNew1 = np.insert(isNew1, iI, news, axis=0)
 
         if filt.size != 0: #TODO should check if filt has any True instead
-            X1 = X1[~F1]
-            Y1 = Y1[~F1]
+            XY1 = XY1[~F1]
+            # Y1 = Y1[~F1]
             isNew1 = isNew1[~F1]
 
-        I1 = np.arange(X1.shape[0])
+        I1 = np.arange(XY1.shape[0])
 
-        divergents = self.rarefactions(I1, X1, Y1)
+        self.segments(XY1)
 
-        newI, newX, newY =  self.fill(I1, X1, Y1, divergents )
+        divergents = self.rarefactions()
+
+        newI, newXY =  self.fill(I1, XY1, divergents )
 
         news = np.ones_like(newI)
 
 
-
         # TODO: make this a single array operation instead of 3 separate ones
-        X1 = np.insert(X1, newI, newX, axis=0)
-        Y1 = np.insert(Y1, newI, newY, axis=0)
-        I1 = np.arange(X1.shape[0])
+        XY1 = np.insert(XY1, newI, newXY, axis=0)
+        # Y1 = np.insert(Y1, newI, newY, axis=0)
+        I1 = np.arange(XY1.shape[0])
 
         self.IsNew = np.insert(isNew1, newI, news, axis=0)
 
 
-        A1 = self.active(X1,Y1)
-
+        A1 = self.active(XY1)
+        dA1 = (dd * A1).T
         # S = np.ones_like(A)*s
-        C = circumference(X1*A1,Y1*A1)
+        C = circumference(XY1*dA1)
 
-
-        return I1, X1, Y1, A1, C
+        X1, Y1 = XY1[:,0], XY1[:,1]
+        return I1, XY1, A1, C
 
 
 
@@ -312,19 +332,23 @@ class Lagrangian:
         I = np.arange(len(T))
         # Calculate Radius for each Theta
         R = func(T)
+        RT = np.stack((R,T), axis=1)
+
         X, Y = pol2cart(R, T)
-        return I, R, T, X, Y 
+        XY = np.stack((X,Y), axis=1)
+
+        return I, RT, XY 
 
 
-    def fill_holes(self, I, X, Y):
-        divergents = self.rarefactions(I, X, Y)
+    def fill_holes(self, I, XY):
+        divergents = self.rarefactions()
 
-        newI, newX, newY =  self.fill(I, X, Y, divergents )
+        newI, newXY =  self.fill(I, XY, divergents )
 
-        X = np.insert(X, newI, newX, axis=0)
-        Y = np.insert(Y, newI, newY, axis=0)
-        I = np.arange(X.shape[0])
-        return I, X, Y
+        XY = np.insert(XY, newI, newXY, axis=0)
+        # Y = np.insert(Y, newI, newY, axis=0)
+        I = np.arange(XY.shape[0])
+        return I, XY
 
 
     def run(self, steps = 1):
@@ -345,7 +369,7 @@ class Lagrangian:
         for self.SimStep in range(steps):
             print("step:", self.SimStep, " | points:", self.I.shape)
 
-            self.I, self.X, self.Y, self.A, C = self.step(self.I, self.X, self.Y, self.A )
+            self.I, self.XY, self.A, C = self.step(self.I, self.XY, self.A )
 
             if sum(self.I.shape) >  self.n * 20 :
                 print("too many points, stopping simulation")

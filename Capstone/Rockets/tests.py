@@ -15,7 +15,7 @@ hull_radius = 4
 interp = 'manydumb'
 
 trw = {
-"funcname":"trapez wave",
+"funcname":"trapez-wave",
 "m":5, "a":1,
 "n_1":-0.66, "n_2":0.95,
 "s":0, "o":1, "invert":1
@@ -42,6 +42,6 @@ HSdata = SIM.HScurves.results()
 HSintrsctns = SIM.HSintersections.results()
 HSsimdata = SIM.HSsim.results()
 
-Hull = {"Hx": SIM.Hx, "Hy": SIM.Hy}
+# Hull = {"Hx": SIM.Hx, "Hy": SIM.Hy}
 
-df = animate(HSdata, SIM, "simulation.html")
+df = animate(SIM, "simulation.html")

@@ -1,7 +1,6 @@
 import numpy as np
 
 
-
 def cart2pol(x, y):
     rho = np.sqrt(x**2 + y**2)
     phi = np.arctan2(y, x)
@@ -16,28 +15,44 @@ def magn(x, y):
     # magnitude of vector
     return np.sqrt(x**2 + y**2)
 
+def Magn(xy):
+    """Magnitude of the vector in 2D form
+
+    Args:
+        xy (np.array): 
+
+    Returns:
+        _type_: _description_
+    """
+    return np.sqrt(np.sum(xy**2,axis=1))
+
 def rad2deg(rad):
     # convert radians to degrees
     return rad * 180 / np.pi
 
 
-def circumference(X,Y):
+def circumference(XY):
     with np.errstate(divide='ignore', invalid='ignore'):
-        dx = np.diff(X)
-        dy = np.diff(Y)
-    dxdy = np.sqrt(dx**2 + dy**2)
+        dxy = np.diff(XY, axis=0)
+        # dy = np.diff(Y)
+    dxdy = Magn(dxy)
     C = np.sum(dxdy)
     return C 
 
 
 
-def normals(X, Y, ):
+def normals(XY):
+
+    X, Y = XY[:,0], XY[:,1]
     # Calculates normals of the curve (assumes the curve is closed)
     tail = 2
     # Add some samples from opposite ends, 
     # so that X,Y appear circular to gradient
     X = np.concatenate([X[-tail:], X, X[:tail]])
     Y = np.concatenate([Y[-tail:], Y, Y[:tail]])
+
+    # XY = np.concatenate([XY[-tail:,:], XY, XY[:tail,:]])
+
 
     Gy = np.gradient(Y)
 
