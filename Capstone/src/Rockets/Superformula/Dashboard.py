@@ -4,8 +4,8 @@ import plotly.graph_objects as go
 import plotly
 import numpy as np
 
-from Formulas import formula1, formula2
-from Signature import analyze_function, dec_scale_2, exp_scale, to_si
+from Rockets.Superformula.Formulas import formula1, formula2
+from Rockets.Superformula.Signature import analyze_function, dec_scale_2, exp_scale, to_si
 from Rockets.Geometry import pol2cart
 
 from dash import dcc
@@ -18,9 +18,10 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-plotly.io.json.config.default_engine = 'json'
-# this dashboard does not work with orjson for some reason.
-# TODO: investigate and fix this, as orjson is much faster than the default json engine.
+plotly.io.json.config.default_engine = 'orjson'
+# orjson is pretty sensitive to types. turns out, you can't have a 
+# np.float as dict key. and I've used them in marks for exponential 
+# scales in sliders. So need to convert them back to regular float
 
 
 def fmt(val):
@@ -50,7 +51,7 @@ class DashboardManager:
     def conf(self, key):
         # val = self.settings(key)
         (r,c) = (2,1) if self.settings["graph.orientation"] == "vertical" else (1,2)
-        (w,h) = (600, 800) if self.settings["graph.orientation"] == "vertical" else (800, 600)
+        (w,h) = (600, 800) if self.settings["graph.orientation"] == "vertical" else (1600, 1200)
         match key:
             case "subplots":
                 return {"rows": r, "cols": c, }
@@ -108,7 +109,7 @@ class DashboardManager:
 
         elif Scl == "Exp":
             ax, vl = exp_scale(Min,Max,20)
-            markers = {a: to_si(v) for a,v in zip(ax,vl)}
+            markers = {float(a): to_si(v) for a,v in zip(ax,vl)}
 
             sldr = dcc.Slider(id=f'slider-{Name}', updatemode='mouseup',marks= markers,
                     min=ax[0], max=ax[-1], step=Step, value=Def,
@@ -160,11 +161,11 @@ class DashboardManager:
         try:
             # Get parameter names and values
             param_names = [v['Name'] for k,v  in self.funcparams.items()]
-            param_str = '_'.join([f'{name}={fmt(val)}' for name, val in zip(param_names, self.lastArgs)])
+            param_str = ' '.join([f'{name}={fmt(val)}' for name, val in zip(param_names, self.lastArgs)])
             
             # Create filename with timestamp and parameters
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            filename = f'superformula_{param_str}_{timestamp}.png'
+            filename = f'{param_str}_{timestamp}.png'
             
             # Convert figure to image bytes using plotly
             import plotly.io as pio

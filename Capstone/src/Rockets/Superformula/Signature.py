@@ -26,11 +26,11 @@ def treat_param(prm: inspect.Parameter, doc: DocstringParam ):
 
     if prm.annotation is inspect._empty:
         if doc and doc.type_name:
-            Type = locate(doc.type_name)
+            Type = doc.type_name
         else:
-            Type = Any
+            Type = 'Any'
     else:
-        Type = prm.annotation
+        Type = prm.annotation.__name__
 
     #print(Desc, Rng)
     spl = re.findall("([\s\w]+):\[([-\d\.]+):?([\d\.]+)?:?([\d\.]+)?\]",Rng)

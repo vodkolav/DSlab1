@@ -30,6 +30,9 @@ def rad2deg(rad):
     # convert radians to degrees
     return rad * 180 / np.pi
 
+def deg2rad(deg):
+    # convert radians to degrees
+    return deg * np.pi / 180
 
 def circumference(XY):
     with np.errstate(divide='ignore', invalid='ignore'):

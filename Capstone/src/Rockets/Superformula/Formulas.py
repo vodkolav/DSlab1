@@ -1,7 +1,7 @@
 
 
 
-from numpy import pi, sin, cos, arcsin, arccos, sign, abs, floor, max
+from numpy import pi, sin, cos, arcsin, arccos, sign, abs, floor, max, deg2rad
 from scipy.signal import sawtooth
 
 
@@ -33,14 +33,14 @@ def formula1(funcname:str = "superformula",
         n_1 (float, optional): Shape parameter 1. Defaults to -1. Exp:[0.01:1000:.01].
         n_2 (float, optional): Shape parameter 2. Defaults to 2. Exp:[0.01:1000:.01].
         n_3 (float, optional): Shape parameter 3. Defaults to 2. Exp:[0.01:1000:.01].
-        s (float, optional): horizontal transition. Defaults to 0. Range:[-360:360:1]
+        s (float, optional): shape rotation in degrees. Defaults to 0. Range:[-180:180:1]
         o (float, optional): vertical transition (offset). Defaults to 1. Range:[0:20:.1]
         invert (int, optional): invert R axis. Defaults to False. Range:[0:2:1]
     """
     # s = 3 # l is the horizontal transition
     # o = 1 # o is the vertical transition (offset)
 
-    s = s/pi
+    s = deg2rad(s)
 
     selection = {
     "floor"       : lambda phi: floor(m*phi/(2*pi)) + s,  
@@ -61,7 +61,7 @@ def formula1(funcname:str = "superformula",
 
     "trapezoid"   : lambda phi: trapzoid_signal(phi, width=4/m, slope=n_1, amp=a),
 
-    "superformula": lambda phi: (abs(cos(m*phi/4 + s)/a)**n_2 + abs(sin(m*phi/4 + s )/b)**n_3 ) ** (-1/n_1)
+    "superformula": lambda phi: (abs(cos(m*phi/4)/a)**n_2 + abs(sin(m*phi/4)/b)**n_3 ) ** (-1/n_1)
 
     }
 
@@ -73,15 +73,18 @@ def formula1(funcname:str = "superformula",
     #mod = lambda phi : abs(cos(phi*m))
     #r = mod(r)
     
-    if funcname is None or funcname not in selection.keys():
+    if funcname is None:
         # return all available options of the funcname
+        return list(selection.keys())
+
+    if funcname not in selection.keys():
         raise ValueError( f"we have no funcname {funcname}. Available functions are: " + str(selection.keys()))
 
     chosen = selection[funcname]
 
     def func(phi):
 
-        r = chosen(phi)
+        r = chosen(phi + s)
         if invert:
             r = max(r)-r
         return r + o

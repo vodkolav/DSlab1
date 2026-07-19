@@ -142,23 +142,7 @@ def animate(SIM, save_path=None):
                         # render_mode="SVG"
                         )
 
-    (x0, y0, x1, y1) = np.array((-1,-1,1,1)) * SIM.hr
-
-    fig.update_layout(
-        shapes=[
-            dict(
-                type="circle",
-                x0=x0, y0=y0, x1=x1, y1=y1,
-                xref="x", yref="y",            # Locks the circle to data coordinates
-                line=dict(
-                    color="grey", 
-                    width=1,
-                    # dash="dash"                # Options: 'solid', 'dash', 'dot', 'dashdot'
-                ),
-                fillcolor="rgba(0, 0, 0, 0)"   # Keeps the inside transparent so data shows through
-            )
-        ]
-    )
+    fig.update_layout(casing(SIM.hr))
  
     fig.update_yaxes(
         scaleanchor = "x",
@@ -173,6 +157,25 @@ def animate(SIM, save_path=None):
     return dfData
 
 
+def casing(R):
+    (x0, y0, x1, y1) = np.array((-1,-1,1,1)) * R
+    
+    shapes=[
+        dict(
+            type="circle",
+            x0=x0, y0=y0, x1=x1, y1=y1,
+            xref="x", yref="y",            # Locks the circle to data coordinates
+            line=dict(
+                color="grey", 
+                width=1,
+                # dash="dash"                # Options: 'solid', 'dash', 'dot', 'dashdot'
+            ),
+            fillcolor="rgba(0, 0, 0, 0)"   # Keeps the inside transparent so data shows through
+        )
+    ]
+    return shapes
+    
+
 def WebAndPerf(SIM, save_path = None):
     
     HSdata = SIM.HScurves.results()
@@ -185,11 +188,11 @@ def WebAndPerf(SIM, save_path = None):
 
     dfData.sort_values(["SimStep", "I", "stat"],inplace=True)
 
-    sddf = pd.DataFrame( {"Hx": SIM.Hx, "Hy": SIM.Hy})
+    # sddf = pd.DataFrame( {"Hx": SIM.Hx, "Hy": SIM.Hy})
 
 
     #R upper bound
-    Rub = np.ceil(SIM.Hx.max()*1.01) 
+    Rub = np.ceil(SIM.hr*1.01) 
 
     
     grain = px.line(dfData, x="X", y="Y",
@@ -205,15 +208,15 @@ def WebAndPerf(SIM, save_path = None):
                         )
     
 
-    hull_trace = go.Scatter(
-        x=sddf['Hx'],
-        y=sddf['Hy'],
-        mode='lines',
-        name='Hull',
-        line=dict(color='black', width=2),
-        hoverinfo='skip',
-        showlegend=False
-    )
+    # hull_trace = go.Scatter(
+    #     x=sddf['Hx'],
+    #     y=sddf['Hy'],
+    #     mode='lines',
+    #     name='Hull',
+    #     line=dict(color='black', width=2),
+    #     hoverinfo='skip',
+    #     showlegend=False
+    # )
 
     dfSim = pd.DataFrame(SIM.HSsim.results())
     perf = px.line(dfSim, x = 'SimStep', y = 'C', render_mode="SVG",)
@@ -223,7 +226,9 @@ def WebAndPerf(SIM, save_path = None):
     for trace in grain.data:
         fig.add_trace(trace, row=1, col=1)
 
-    fig.add_trace(hull_trace, row=1, col=1)
+    # fig.add_trace(hull_trace, row=1, col=1)
+
+    fig.update_layout(casing(SIM.hr))
 
     for trace in perf.data:
         fig.add_trace(trace, row=1, col=2)

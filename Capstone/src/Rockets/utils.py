@@ -57,7 +57,7 @@ def  parse_sf_params(fn):
     """
     import re
     fn = fn.replace("_", " ")
-    fn = re.sub("([a-z]) (\d)=", "\\1_\\2=", fn )
+    fn = re.sub("([a-z]) (\\d)=", "\\1_\\2=", fn )
     j = fn.split(" ")
     k = [i.split("=") for i in j if "=" in i]
     l = {i[0]: trynumeric(i[1]) for i in k}
