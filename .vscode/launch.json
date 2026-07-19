@@ -16,7 +16,7 @@
             "name": "debug test",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/Capstone/Rockets/tests.py",
+            "program": "${workspaceFolder}/Capstone/tests/test_simulation.py",
             "console": "integratedTerminal",
             "justMyCode": false,
             "env": {

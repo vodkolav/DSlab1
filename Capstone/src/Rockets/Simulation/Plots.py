@@ -116,7 +116,7 @@ def animate(SIM, save_path=None):
     "5new_fin": "#C7DB15"
     }
 
-    stats = dfData['stat'].unique()
+    stats = dfData['stat'].unique().tolist()
     stats.sort()
 
     dfData = pad(dfData,["SimStep", "I", "stat" ])
@@ -142,7 +142,7 @@ def animate(SIM, save_path=None):
                         # render_mode="SVG"
                         )
 
-    fig.update_layout(casing(SIM.hr))
+    fig.update_layout(shapes = [casing(SIM.hr)])
  
     fig.update_yaxes(
         scaleanchor = "x",
@@ -160,8 +160,7 @@ def animate(SIM, save_path=None):
 def casing(R):
     (x0, y0, x1, y1) = np.array((-1,-1,1,1)) * R
     
-    shapes=[
-        dict(
+    shape = dict(
             type="circle",
             x0=x0, y0=y0, x1=x1, y1=y1,
             xref="x", yref="y",            # Locks the circle to data coordinates
@@ -172,8 +171,8 @@ def casing(R):
             ),
             fillcolor="rgba(0, 0, 0, 0)"   # Keeps the inside transparent so data shows through
         )
-    ]
-    return shapes
+    
+    return shape
     
 
 def WebAndPerf(SIM, save_path = None):

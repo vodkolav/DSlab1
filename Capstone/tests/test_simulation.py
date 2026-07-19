@@ -1,6 +1,6 @@
 
 
-from Rockets import animate
+from Rockets.Simulation.Plots import animate
 from Rockets.Simulation.Simulation import Lagrangian
 # from Capstone.Rockets.Simulation import HScurves, HSintersections, HSsim
 

@@ -254,9 +254,8 @@ class Lagrangian:
 
         # XY = np.stack((X,Y), axis=1)
 
-        Nx, Ny = normals(XY)
+        N = normals(XY)
 
-        N = np.stack((Nx, Ny), axis=1)  # (n,2)
 
         dd = np.ones([2,1]) * self.d
         # dA = dd * A

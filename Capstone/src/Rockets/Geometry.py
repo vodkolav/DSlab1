@@ -46,42 +46,39 @@ def circumference(XY):
 
 def normals(XY):
 
-    X, Y = XY[:,0], XY[:,1]
     # Calculates normals of the curve (assumes the curve is closed)
+
     tail = 2
     # Add some samples from opposite ends, 
-    # so that X,Y appear circular to gradient
-    X = np.concatenate([X[-tail:], X, X[:tail]])
-    Y = np.concatenate([Y[-tail:], Y, Y[:tail]])
-
-    # XY = np.concatenate([XY[-tail:,:], XY, XY[:tail,:]])
+    # so that XY appear circular to gradient
+    XYc = np.concatenate([XY[-tail:,:], XY, XY[:tail,:]])
 
 
-    Gy = np.gradient(Y)
+    G = np.gradient(XYc,axis=0)
+    G = G[tail:-tail, :]
 
     #Check if any gradients got inf or nan
     #assert sum(np.isnan(Gy)) == 0
 
-    #Gx = np.gradient(X, Y) # this should give us an array of 1s, since the gradient of X with respect to itself is 1.
-
-    Gx = np.gradient(X)
     # Calculate normals
-    L = magn(Gx, Gy)
-    Nx, Ny = -Gy/L, Gx/L 
-    xy  = np.array([X,Y])
-    NxNy = np.array([Nx,Ny])
+    L = Magn(G)
+
+    # Nx, Ny = -Gy/L, Gx/L 
+    one = np.array([-1,1])
+    LLL = np.outer(1/L,one)
+    N = G[:,::-1] * LLL
 
     # Ensure all normal vectors point in the same 
     # direction (Relative to origin) 
-    dot_products = np.sum(xy * NxNy, axis=0)
 
-    scaling_factor_S = np.sign(dot_products)
+    dp = np.sum(XY * N, axis=1)
 
-    S_reshaped = scaling_factor_S[np.newaxis, :]
+    scaling_factor_S = np.sign(dp)
 
-    N_consistent = NxNy * S_reshaped 
-    Nx, Ny =  N_consistent[:, tail:-tail]
-    return Nx, Ny
+    S_reshaped = scaling_factor_S[:, np.newaxis]
+
+    N_consistent = N * S_reshaped
+    return N_consistent
 
 
 def intersections(c0, v0, c_block, v_block):
