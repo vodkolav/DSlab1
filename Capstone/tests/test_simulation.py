@@ -13,6 +13,7 @@ n = 1000
 window_size = 70
 hull_radius = 4
 interp = 'manydumb'
+#interp = 'slerp'
 
 trw = {
 "funcname":"trapez-wave",

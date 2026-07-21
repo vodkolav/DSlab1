@@ -6,35 +6,41 @@ from plotly.subplots import make_subplots
 import plotly.express as px
 from Rockets.Geometry import pol2cart
 
-def dots_and_arrows(I, X, Y, Ex, Ey, Px, Py, clas, filt, save_path = None, **kwargs):
-    Ax, Ay = Ex - X, Ey - Y
-    isNew = kwargs['IsNew']
-    fig = ff.create_quiver(X, Y, Ax, Ay, scale=1, arrow_scale=.05, name='offset',hovertext=I)
-    fig.add_trace(go.Scatter(x=Px, y=Py, mode='markers',
-                             marker=dict(size=6, color = clas*1, symbol = 'x') ,
-                             hovertext = clas,
-                             name='window_hits'))
-    
-    stat = (isNew * 2 + filt)
+def dots_and_arrows(SIM, filtr, save_path = None, **kwargs):   
 
-    colr = {0:"blue", 1: "red", 2:"green", 3:"purple"}
+    dfC, color_map = preproc_sim_data(SIM, dopad = False, **filtr)
 
-    stat = [colr[i] for i in stat]
+    dfC["statCol"] = dfC.status.map(color_map)
 
-    fig.add_trace(go.Scatter(x=X, y=Y, mode='lines', marker=dict(size=4, color=filt*1),
-                              hovertext=I, name='XY'))
-    fig.add_trace(go.Scatter(x=Ex, y=Ey, mode='lines',  name='ExEy-line'))    
-    fig.add_trace(go.Scatter(x=Ex, y=Ey, mode='markers', marker=dict(size=4, color=stat),
-                             hovertext=I, name='ExEy'))
-    
-    Hx = kwargs['Hx']
-    Hy = kwargs['Hy']
-    fig.add_trace(go.Scatter(x=Hx, y=Hy, mode='lines', marker=dict(size=4, color=filt*1),
-                             name='Hull'))
+    dfI = SIM.HSintersections.results(**filtr)
+
+    dfI = pd.DataFrame(dfI)
+
+    Ax, Ay = dfC.Ex - dfC.X, dfC.Ey - dfC.Y
+
+    fig = ff.create_quiver(dfC.X, dfC.Y, Ax, Ay, hovertext=dfC.I, 
+                           scale=1, arrow_scale=.05, name='offset')
+
+    fig.add_trace(go.Scatter(x=dfI.Px, y=dfI.Py,  hovertext = dfI.clas,
+                             mode='markers',name='intersections',
+                             marker=dict(size=6, color = dfI.clas, symbol = 'x')
+                             ))
+
+    fig.add_trace(go.Scatter(x=dfC.X, y=dfC.Y, hovertext=dfC.I, name='XY',
+                             marker=dict(size=4), # , color=dfC.statCol
+                             mode='lines' 
+                            ))
+
+    fig.add_trace(go.Scatter(x=dfC.Ex, y=dfC.Ey, mode='lines',  name='ExEy-line'))    
+
+    fig.add_trace(go.Scatter(x=dfC.Ex, y=dfC.Ey, mode='markers', 
+                             marker=dict(size=4, color=dfC.statCol), 
+                             hovertext=dfC.I, name='ExEy'))
+
+    fig.update_layout(shapes = [casing(SIM.hr)])
 
     fig.update_layout(width=800, height=800)
-    # fig.update_xaxes(range=roi['x'])
-    # fig.update_yaxes(range=roi['y'])
+
     if save_path is not None:
         fig.write_html(save_path, auto_play = False, )
 
@@ -87,14 +93,16 @@ def pad(df: pd.DataFrame, cols = ['frame', 'category'] ):
     return padded_df
 
 
+def preproc_sim_data(SIM, dopad = False, **kwargs):
 
-def animate(SIM, save_path=None):
+    HScurves = SIM.HScurves.results(**kwargs)
 
-    HSdata = SIM.HScurves.results()
+    HScurves = pd.DataFrame(HScurves)
 
-    dfData = pd.DataFrame(HSdata)
+    HScurves["stat"] = HScurves.IsNew * 1  + HScurves.filt*2 + (~HScurves.A) * 4 
 
-    dfData["stat"] = dfData.IsNew * 1  + dfData.filt*2 + (~dfData.A) * 4 
+    if dopad:
+        HScurves = pad(HScurves,["SimStep", "I", "stat" ])
 
     cat_map = {
     0: "0old",
@@ -102,10 +110,12 @@ def animate(SIM, save_path=None):
     2: "2die",
     3: "3new_die",
     4: "4fin ",
-    5: "5new_fin"
+    5: "5new_fin",
+    6: "6die_fin",
+    7: "7new_die_fin"
     }
 
-    dfData.stat = dfData.stat.map(cat_map)
+    HScurves["status"] = HScurves.stat.map(cat_map)
 
     color_map = {
     "0old": "#124FC0",
@@ -113,22 +123,33 @@ def animate(SIM, save_path=None):
     "2die": '#FF4B4B',
     "3new_die": "#BF0BEC",
     "4fin ": "#E69112",
-    "5new_fin": "#C7DB15"
+    "5new_fin": "#C7DB15",
+    "6die_fin":  "#7C880F",
+    "7new_die_fin": "#282C04"
     }
 
-    stats = dfData['stat'].unique().tolist()
-    stats.sort()
+    # HScurves["statCol"] = HScurves.status.map(color_map)
 
-    dfData = pad(dfData,["SimStep", "I", "stat" ])
+    return HScurves, color_map
+
+
+def animate(SIM, save_path=None):
+
+    dfData, color_map = preproc_sim_data(SIM, dopad = True)
+
+    stats = dfData['stat'].unique().astype(str).tolist()
+    stats.sort()
 
     #R upper bound
     Rub = SIM.hr*1.1
     
+    dfData = dfData.sort_values(by='SimStep', ascending=False)
+
     fig = px.scatter(dfData, x="X", y="Y",
-                        color="stat", 
+                        color="status", 
                         # animation_group="I",
                         range_x=[-Rub,Rub], range_y=[-Rub,Rub],
-                        hover_data=["I"],                        
+                        hover_data=["I", "SimStep"],
                         animation_frame="SimStep", 
                         animation_group="I",
                         color_discrete_map=color_map,
@@ -227,7 +248,7 @@ def WebAndPerf(SIM, save_path = None):
 
     # fig.add_trace(hull_trace, row=1, col=1)
 
-    fig.update_layout(casing(SIM.hr))
+    fig.update_layout(shapes=[casing(SIM.hr)])
 
     for trace in perf.data:
         fig.add_trace(trace, row=1, col=2)

@@ -54,4 +54,5 @@ dev = [
     "dash[cloud]",
     "ipykernel",    # Required for VS Code Jupyter Notebooks
     "pytest",       # For testing
+    "nbformat>=4.2.0" 
 ]

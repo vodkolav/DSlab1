@@ -42,7 +42,10 @@ class Lagrangian:
         # TODO: validations of func and casing size
 
 
-        # Caching variables
+        # Caching variables: only relevant to current step.
+        
+        # normals; size: [n,2]
+        self.N = []
         
         # segment direction vectors; size: [n,2]
         self.S = []
@@ -69,7 +72,7 @@ class Lagrangian:
                                         elems='valid')
 
         self.HScurves = Harvester(varnames=["self.I", "self.XY", "self.A", "self.IsNew",
-                                    "self.SimStep", "N", "E", "filt"], 
+                                    "self.SimStep", "self.N", "E", "self.d", "filt"], 
                                     on_size_mismatch='error')
                                     #"I1","X1", "Y1", circ, , "isNew" 
 
@@ -176,7 +179,7 @@ class Lagrangian:
         return np.concatenate((xi,yi), axis = 1)
 
 
-    def fill(self, I, XY, divergents):
+    def fill(self, I, XY1, divergents):
 
         #XY = np.stack((X,Y), axis=1)
         # n = XY.shape[0]
@@ -189,7 +192,7 @@ class Lagrangian:
 
         if self.method == 'dumb':
                 # simplest interpolation: just add half the segment vector to the start point of the segment
-                newXY = XY[divergents] + self.S[divergents] * 0.5
+                newXY = XY1[divergents] + self.S[divergents] * 0.5
                 newI = I[divergents]
         else:
             # add multiple points along the segment vector
@@ -197,7 +200,7 @@ class Lagrangian:
             # hi = XY[divergents+1,:] - XY[divergents,:]
             hi = self.S[divergents,:]
 
-            l = np.sqrt(np.sum(hi**2,axis=1))
+            l = Magn(hi)
             jj = (l/self.d).astype(int)       
 
             dividx = I[divergents]
@@ -211,29 +214,34 @@ class Lagrangian:
             newI = np.zeros(0)
 
             for i,rr in enumerate(dividx):
-                j = np.arange(1, jj[i]).reshape(jj[i]-1,1) 
 
-                wat = np.dot(j,hi[[i],:])
-                
-                xy = XY[rr,:] + wat / jj[i]
-                
-                # xyl = xy.copy()
+                xy = []
+                onns = np.ones(jj[i]-1)
 
-                # if (xy > 5).sum() > 0:
-                #     print(xyl)
+                if self.method in ('manydumb', 'interp'):
+                    j = np.arange(1, jj[i]).reshape(jj[i]-1,1) 
+
+                    wat = np.dot(j,hi[[i],:])
+                    
+                    xy = XY1[rr,:] + wat / jj[i]
+                    
+                    # xyl = xy.copy()
+
+                    # if (xy > 5).sum() > 0:
+                    #     print(xyl)
 
                 if self.method == 'interp':
-                    slc = cslice(rr-3,rr+3, XY.shape[0])
-                    xy = self.interpolate(XY[slc,:], xy)
+                    slc = cslice(rr-3,rr+3, XY1.shape[0])
+                    xy = self.interpolate(XY1[slc,:], xy)
 
                 if self.method == 'slerp':
                     # not working! 
-                    f,t = cslice(rr-1,rr+1, XY.shape[0])
-                    xy = slerp(XY[f,:], XY[t,:], self.d)
-
+                    f,t = cslice(rr-1,rr+1, XY1.shape[0])
+                    newN = slerp(self.N[f,:], self.N[t,:], self.d)
+                    xy = self.advance(XY1[f,:], newN, self.d, True)
+                    onns = np.ones(xy.shape[0])
 
                 newXY = np.concatenate((newXY, xy), axis=0)
-                onns = np.ones(jj[i]-1)
 
                 newI = np.concatenate((newI, onns*(rr)), axis=0)
                 # print("a", a)
@@ -250,20 +258,21 @@ class Lagrangian:
         return A
 
 
+    def advance(self, O, N, d, A):
+        dd = np.ones([2,1]) * d
+        # Ex, Ey =  X + self.d * A * Nx , Y + self.d * A * Ny
+        E =  O + (dd * A).T * N
+        return E
+
+
     def step(self, I, XY, A):
 
         # XY = np.stack((X,Y), axis=1)
 
-        N = normals(XY)
+        self.N = normals(XY)
 
-
-        dd = np.ones([2,1]) * self.d
-        # dA = dd * A
-        # Ex, Ey =  X + self.d * A * Nx , Y + self.d * A * Ny
-        E =  XY + (dd * A).T * N
-
-        # I = np.asarray(I).ravel()
-        if not (XY.shape[0]  == N.shape[0] == I.shape[0]):
+        E = self.advance(XY, self.N, self.d, A)
+        if not (XY.shape[0]  == self.N.shape[0] == I.shape[0]):
             raise ValueError('All inputs must have same length')
 
         # Prepare arrays
@@ -307,20 +316,18 @@ class Lagrangian:
         news = np.ones_like(newI)
 
 
-        # TODO: make this a single array operation instead of 3 separate ones
         XY1 = np.insert(XY1, newI, newXY, axis=0)
-        # Y1 = np.insert(Y1, newI, newY, axis=0)
         I1 = np.arange(XY1.shape[0])
 
         self.IsNew = np.insert(isNew1, newI, news, axis=0)
 
 
         A1 = self.active(XY1)
+        dd = np.ones([2,1]) * self.d
         dA1 = (dd * A1).T
         # S = np.ones_like(A)*s
         C = circumference(XY1*dA1)
 
-        X1, Y1 = XY1[:,0], XY1[:,1]
         return I1, XY1, A1, C
 
 
