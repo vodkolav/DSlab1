@@ -130,6 +130,19 @@ class Harvester:
         return store
 
 
+    def last_step(self, extract_attrs = True, break_2d_vectors = True):
+
+        e = lambda k: k.split(".")[-1] if extract_attrs else k
+
+        store = {e(vn): vals[-1] for vn, vals in self.storage.items()}
+
+        if break_2d_vectors:
+            tmp = [self.break_2D_vec(k,v) for k,v in store.items()]
+            store = {k: v for d in tmp for k, v in d.items()}
+
+        return store
+
+
     def break_2D_vec(self, k, XY):
         """Breaks 2D vectors into 2 1D vectors.
            If it's already 1d, returned as is

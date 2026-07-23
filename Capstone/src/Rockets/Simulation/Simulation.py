@@ -4,12 +4,13 @@ from scipy.interpolate import Rbf, CubicSpline
 from Rockets.Geometry import circumference, normals, Magn, cslice, pol2cart, cart2pol, intersections, slerp
 from Rockets.Simulation.Harvester import Harvester
 
+from Benchmarking.telemetry_manager import TelemetryManager
 
 
 
 class Lagrangian:
 
-    def __init__(self, func,  hull_radius = 4, n = 1000, d = 0.11, window_size=50, interp_method = 'manydumb', ):
+    def __init__(self, func,  hull_radius = 4, n = 1000, d = 0.11, window_size=50, interp_method = 'manydumb', **kwargs ):
         """Simulate SRM burnback
 
         Args:
@@ -24,6 +25,8 @@ class Lagrangian:
             ValueError: _description_
             ValueError: _description_
         """
+
+        self.tele = TelemetryManager()
         #Settings
         if window_size < 2:
             raise ValueError('window_size must be >= 2')
@@ -175,7 +178,7 @@ class Lagrangian:
         yi = rbf(xi)
 
         if (np.abs(yi) > 5).sum() > 0:
-            print(xy)
+            self.tele.print(xy)
         return np.concatenate((xi,yi), axis = 1)
 
 
@@ -207,7 +210,7 @@ class Lagrangian:
 
 
             if any(l > 1):
-                print("oops")
+                self.tele.print("oops")
 
             # cubXY = np.zeros((0,2))
             newXY = np.zeros((0,2))
@@ -331,6 +334,11 @@ class Lagrangian:
         return I1, XY1, A1, C
 
 
+    def step_summary(self, mode = "data"):
+        if mode == "index":
+            return self.SimStep
+        else:
+            return self.HSsim.last_step()
 
     def grain(self, func, n):
         T = np.linspace(0, np.pi*2, n, endpoint=False) - 0.0001
@@ -367,23 +375,25 @@ class Lagrangian:
             dict: dictionary of results data
         """
         
-        print('Simulation step size(d):', self.d)
-        print('Simulation Steps:', steps)
-        print('Curve points (n):', self.n)
-        
+        self.tele.print('Simulation step size(d):', self.d)
+        self.tele.print('Simulation Steps:', steps)
+        self.tele.print('Curve points (n):', self.n)
+
+        C = 0 
+        self.HSsim.collect(locals())
 
         for self.SimStep in range(steps):
-            print("step:", self.SimStep, " | points:", self.I.shape)
+            self.tele.ping("step:", self.SimStep, " | points:", self.I.shape)
 
             self.I, self.XY, self.A, C = self.step(self.I, self.XY, self.A )
 
             if sum(self.I.shape) >  self.n * 20 :
-                print("too many points, stopping simulation")
+                self.tele.error("too many points, stopping simulation")
                 break
 
             self.HSsim.collect(locals())
             if sum(self.A) == 0:
-                print("everything's burnt")
+                self.tele.print("everything's burnt")
                 break
 
         #TODO return the performance curve
