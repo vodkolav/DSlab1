@@ -16,6 +16,7 @@ def shape(item):
         return item
 
 def describe(subst):
+    print("Better use describe from Benckmarking package")
     fmt = "{n} {s}: {t}"
     summ = [fmt.format(n=k, t=type(v), s= shape(v) ) for k,v in subst.items() ]
     print(*summ, sep='\n', end = "\n\n")

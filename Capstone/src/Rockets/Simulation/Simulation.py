@@ -2,7 +2,7 @@
 import numpy as np
 from scipy.interpolate import Rbf, CubicSpline
 from Rockets.Geometry import circumference, normals, Magn, cslice, pol2cart, cart2pol, intersections, slerp
-from Rockets.Simulation.Harvester import Harvester
+from Benchmarking.sensors.Harvester import Harvester
 
 from Benchmarking.telemetry_manager import TelemetryManager
 
@@ -74,11 +74,14 @@ class Lagrangian:
                                                 "clas", "condi", "condj"],
                                         elems='valid')
 
-        self.HScurves = Harvester(varnames=["self.I", "self.XY", "self.A", "self.IsNew",
-                                    "self.SimStep", "self.N", "E", "self.d", "filt"], 
-                                    on_size_mismatch='error')
+        # self.HScurves = Harvester(varnames=["self.I", "self.XY", "self.A", "self.IsNew",
+        #                             "self.SimStep", "self.N", "E", "self.d", "filt"], 
+        #                             on_size_mismatch='error')
                                     #"I1","X1", "Y1", circ, , "isNew" 
 
+
+    def dump_curves(self, fnlocals):
+        pass
 
     def segments(self, XY):
         Ends = np.concatenate((XY[-1:,:],XY[:-1,:]), axis=0) # segment end points 
@@ -288,7 +291,8 @@ class Lagrangian:
 
         # filt is True where the points should be filtered out / dropped
 
-        self.HScurves.collect(locals())
+        # self.HScurves.collect(locals())
+        self.dump_curves(locals())
 
 
 

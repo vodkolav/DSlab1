@@ -28,6 +28,9 @@ class SimPipeline(Pipeline):
 
 
     def set_telemetry(self, tele: TelemetryManager):
+        #TODO: check if tele can just be passed to __init__ on creation of pipeline
+        # or do we require a separate set_telemetry step? 
+
         self.tele = tele
         
         # pth = ".tracks.resources"
@@ -42,15 +45,16 @@ class SimPipeline(Pipeline):
 
         tracks = [
             ".tracks.episodes",
-            #".tracks.profile"
+            ".tracks.harvest.curves"
             #,".tracks.resources" 
             #,".tracks.log",
             #,".model_tts.tracks.log"
             ] 
 
-        pth = tracks[0]
-        self.tele.AttachSensor(self.SIM, "step", pth, summary_func = "step_summary")
+        self.tele.AttachSensor(self.SIM, "step", tracks[0], summary_func = "step_summary")
+        self.tele.AttachSensor(self.SIM, "dump_curves", tracks[1], summary_func = "step_summary")
 
+        self.SIM.tele = self.tele
 
     def init_sim(self, new_case):
 
@@ -61,8 +65,6 @@ class SimPipeline(Pipeline):
         self.profile = formula1(**self.sfparams)
 
         self.SIM = Lagrangian(self.profile, **self.simparams)
-
-        self.SIM.tele = self.tele
 
 
 
@@ -77,7 +79,7 @@ class SimPipeline(Pipeline):
         # HSsimdata = SIM.HSsim.results()
 
         # self.current_case['file']['stem']
-        WebAndPerf(self.SIM, self.case_file + ".html")
+        # WebAndPerf(self.SIM, self.case_file + ".html")
 
 
     def results(self):
