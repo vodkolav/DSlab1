@@ -8,7 +8,7 @@ from Rockets.Geometry import pol2cart
 
 def dots_and_arrows(SIM, filtr, save_path = None, **kwargs):   
 
-    dfC, color_map = preproc_sim_data(SIM, dopad = False, **filtr)
+    dfC, color_map = preproc_curves_data(SIM, dopad = False, **filtr)
 
     dfC["statCol"] = dfC.status.map(color_map)
 
@@ -93,9 +93,14 @@ def pad(df: pd.DataFrame, cols = ['frame', 'category'] ):
     return padded_df
 
 
-def preproc_sim_data(SIM, dopad = False, **kwargs):
+def preproc_sim_data(HSsim):
 
-    HScurves = SIM.HScurves.results(**kwargs)
+    dfSim = pd.DataFrame(HSsim)
+
+    return dfSim
+
+
+def preproc_curves_data(HScurves, dopad = False, **kwargs):
 
     HScurves = pd.DataFrame(HScurves)
 
@@ -135,7 +140,7 @@ def preproc_sim_data(SIM, dopad = False, **kwargs):
 
 def animate(SIM, save_path=None):
 
-    dfData, color_map = preproc_sim_data(SIM, dopad = True)
+    dfData, color_map = preproc_curves_data(SIM, dopad = True)
 
     stats = dfData['stat'].unique().astype(str).tolist()
     stats.sort()
@@ -194,28 +199,15 @@ def casing(R):
         )
     
     return shape
-    
 
-def WebAndPerf(SIM, save_path = None):
-    
-    HSdata = SIM.HScurves.results()
 
-    dfData = pd.DataFrame(HSdata)
-    #dfData.loc[dfData.I == 42,"IsNew"] = 1.0 # so the animation has both colors in the frames
-    dfData["IsNew"] = dfData.IsNew.astype(bool)
-
-    dfData["stat"] = (dfData.IsNew * 2 + dfData.filt).astype(str)
-
-    dfData.sort_values(["SimStep", "I", "stat"],inplace=True)
-
-    # sddf = pd.DataFrame( {"Hx": SIM.Hx, "Hy": SIM.Hy})
-
+def WebAndPerf(curvesDF, simDF, hull_radius, save_path = None):
 
     #R upper bound
-    Rub = np.ceil(SIM.hr*1.01) 
+    Rub = np.ceil(hull_radius*1.01) 
 
     
-    grain = px.line(dfData, x="X", y="Y",
+    grain = px.line(curvesDF, x="X", y="Y",
                         # color="stat", 
                         range_x=[-Rub,Rub], range_y=[-Rub,Rub],
                         hover_data=["I"],                        
@@ -226,29 +218,17 @@ def WebAndPerf(SIM, save_path = None):
                         # width=700, height=600,
                          render_mode="SVG"
                         )
-    
 
-    # hull_trace = go.Scatter(
-    #     x=sddf['Hx'],
-    #     y=sddf['Hy'],
-    #     mode='lines',
-    #     name='Hull',
-    #     line=dict(color='black', width=2),
-    #     hoverinfo='skip',
-    #     showlegend=False
-    # )
+    perf = px.line(simDF, x = 'SimStep', y = 'C', render_mode="SVG",)
 
-    dfSim = pd.DataFrame(SIM.HSsim.results())
-    perf = px.line(dfSim, x = 'SimStep', y = 'C', render_mode="SVG",)
-
-    fig = make_subplots(subplot_titles=('Web burned', 'Performance (Steps vs. Curcumfernce)' ), rows=1, cols=2)
+    fig = make_subplots(subplot_titles=('Web burned', 'Performance (Steps vs. Circumference)' ), rows=1, cols=2)
 
     for trace in grain.data:
         fig.add_trace(trace, row=1, col=1)
 
     # fig.add_trace(hull_trace, row=1, col=1)
 
-    fig.update_layout(shapes=[casing(SIM.hr)])
+    fig.update_layout(shapes=[casing(hull_radius)])
 
     for trace in perf.data:
         fig.add_trace(trace, row=1, col=2)
@@ -269,7 +249,6 @@ def WebAndPerf(SIM, save_path = None):
 
     else:
         fig.show()
-    return dfData
 
 
 def Shape(R, T):

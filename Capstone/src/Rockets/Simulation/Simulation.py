@@ -400,7 +400,8 @@ class Lagrangian:
                 self.tele.print("everything's burnt")
                 break
 
-        #TODO return the performance curve
+        #TODO return the performance curve. think more on representation
+        return self.HSsim.results()
 
 
 
