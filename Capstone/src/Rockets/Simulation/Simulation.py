@@ -4,7 +4,7 @@ from scipy.interpolate import Rbf, CubicSpline
 from Rockets.Geometry import circumference, normals, Magn, cslice, pol2cart, cart2pol, intersections, slerp
 from Benchmarking.sensors.Harvester import Harvester
 
-from Benchmarking.telemetry_manager import TelemetryManager
+from Benchmarking.telemetry_manager import DummyTelemetryManager
 
 
 
@@ -26,7 +26,7 @@ class Lagrangian:
             ValueError: _description_
         """
 
-        self.tele = TelemetryManager()
+        self.tele = DummyTelemetryManager()
         #Settings
         if window_size < 2:
             raise ValueError('window_size must be >= 2')

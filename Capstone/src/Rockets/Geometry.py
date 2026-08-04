@@ -1,5 +1,6 @@
 import numpy as np
 
+NPERRSTATE = 'warn' # 'ignore' # 'warn' # 'raise' # 'log' # 'print' # 'call'
 
 def cart2pol(x, y):
     rho = np.sqrt(x**2 + y**2)
@@ -35,7 +36,7 @@ def deg2rad(deg):
     return deg * np.pi / 180
 
 def circumference(XY):
-    with np.errstate(divide='ignore', invalid='ignore'):
+    with np.errstate(divide=NPERRSTATE, invalid=NPERRSTATE):
         dxy = np.diff(XY, axis=0)
         # dy = np.diff(Y)
     dxdy = Magn(dxy)
@@ -65,8 +66,9 @@ def normals(XY):
 
     # Nx, Ny = -Gy/L, Gx/L 
     one = np.array([-1,1])
-    LLL = np.outer(1/L,one)
-    N = G[:,::-1] * LLL
+    with np.errstate(divide=NPERRSTATE, invalid=NPERRSTATE):
+        LLL = np.outer(1/L,one)
+        N = G[:,::-1] * LLL
 
     # Ensure all normal vectors point in the same 
     # direction (Relative to origin) 
@@ -92,7 +94,7 @@ def intersections(c0, v0, c_block, v_block):
 
     num_tj = np.cross(C, v0)
 
-    with np.errstate(divide='ignore', invalid='ignore'):
+    with np.errstate(divide=NPERRSTATE, invalid=NPERRSTATE):
         ti = num_ti / den
         tj = num_tj / den
 

@@ -57,7 +57,7 @@ class SimPipeline(Pipeline):
             ] 
 
         self.tele.AttachSensor(self.SIM, "step", tracks[0], summary_func = "step_summary")
-        self.tele.AttachSensor(self.SIM, "dump_curves", tracks[1], summary_func = "step_summary")
+        self.tele.AttachSensor(self.SIM, "dump_curves", tracks[1])
 
         self.SIM.tele = self.tele
 
@@ -78,18 +78,21 @@ class SimPipeline(Pipeline):
         self.tele.print("Simulation completed.")
 
 
-    def post_case(self, tracks):
+    def post_case(self):
         # optional.
         # runs after each case is completed, and after telemetry has collected all data for the case.
         # can be used to generate plots, summaries, etc. based on the collected telemetry data.
 
+        tracks = self.tele.CAse.tracks
+        config = self.tele.CAse.config
+
         simdf = preproc_sim_data(tracks['episodes']['data'])
-        curvesdf =  preproc_curves_data(tracks['harvest']['curves']['data'])
-        case_file = self.tele.case_filename()
+        curvesdf, colmap =  preproc_curves_data(tracks['harvest']['curves']['data'])
+        case_file = self.tele.CAse.case_filename()
 
         WebAndPerf(simDF=simdf, 
                    curvesDF=curvesdf, 
-                   hull_radius= self.simparams["hull_radius"], 
+                   hull_radius=  config["simulation"]["hull_radius"], 
                    save_path= case_file + ".html")
 
 
