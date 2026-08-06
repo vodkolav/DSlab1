@@ -1,6 +1,6 @@
 
 from Rockets.Simulation.Plots import preproc_curves_data, preproc_sim_data
-from Rockets.Simulation.Plots import dots_and_arrows, Interactive_polar, Shape, WebAndPerf
+from Rockets.Simulation.Plots import Web, Perf, multiplot ,save_fig, add_plot
 from Rockets.Simulation.Simulation import Lagrangian
 from Rockets.Superformula.Formulas import formula1, formula2
 from Rockets.utils import describe, clip, shape, pick
@@ -88,12 +88,16 @@ class SimPipeline(Pipeline):
 
         simdf = preproc_sim_data(tracks['episodes']['data'])
         curvesdf, colmap =  preproc_curves_data(tracks['harvest']['curves']['data'])
-        case_file = self.tele.CAse.case_filename()
+        case_file = self.tele.CAse.case_filename(field='case_signature')
 
-        WebAndPerf(simDF=simdf, 
-                   curvesDF=curvesdf, 
-                   hull_radius=  config["simulation"]["hull_radius"], 
-                   save_path= case_file + ".html")
+
+        MP = multiplot(1,2)
+
+        add_plot(MP, Web(curvesdf, hull_radius=  config["simulation"]["hull_radius"]), row=1, col=1)
+
+        add_plot(MP, Perf(simdf), row=1, col=2)
+
+        save_fig(MP,save_path= case_file + ".html")
 
 
     def results(self):

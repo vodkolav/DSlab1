@@ -68,7 +68,7 @@ class Lagrangian:
         # Hr = np.ones_like(self.T)*self.hr
         # self.Hx, self.Hy = pol2cart(Hr, self.T)
 
-        self.HSsim = Harvester(["self.SimStep", "C"])
+        self.HSsim = Harvester(["self.SimStep", "C", "npoints"])
 
         self.HSintersections = Harvester(varnames=["self.SimStep", "i", "j", "ti", "tj", "Px", "Py",
                                                 "clas", "condi", "condj"],
@@ -213,7 +213,7 @@ class Lagrangian:
 
 
             if any(l > 1):
-                self.tele.print("oops")
+                self.tele.warning("oops") # TODO: maybe even error?
 
             # cubXY = np.zeros((0,2))
             newXY = np.zeros((0,2))
@@ -384,10 +384,12 @@ class Lagrangian:
         self.tele.print('Curve points (n):', self.n)
 
         C = 0 
+        npoints = self.I.shape
         self.HSsim.collect(locals())
 
         for self.SimStep in range(steps):
-            self.tele.ping("step:", self.SimStep, " | points:", self.I.shape)
+            npoints = self.I.shape
+            self.tele.ping("step:", self.SimStep, " | points:", npoints, " | circumference:", C)
 
             self.I, self.XY, self.A, C = self.step(self.I, self.XY, self.A )
 

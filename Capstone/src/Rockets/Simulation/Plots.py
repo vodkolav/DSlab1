@@ -48,7 +48,7 @@ def dots_and_arrows(SIM, filtr, save_path = None, **kwargs):
         fig.show()
 
 
-def Interactive_polar(df):
+def Interactive_polar(df, **kwargs):
     # Interactive Polar plot
     #R upper bound
     Rub = np.ceil(df.R.max()) + 1
@@ -58,7 +58,7 @@ def Interactive_polar(df):
                         direction= "counterclockwise", start_angle=0,
                         #color_discrete_sequence=px.colors.sequential.Plasma_r, 
                         #template="plotly_dark",)
-                        width=600, height=600
+                        **kwargs
                         )
     fig.show()
 
@@ -93,10 +93,23 @@ def pad(df: pd.DataFrame, cols = ['frame', 'category'] ):
     return padded_df
 
 
+def preproc_log_data(logdata: dict):
+    colmap = { "ping": "green", "info": "blue", "warning": "orange", "error": "red"}
+    ymap = {"ping": 0, "info": 1, "warning": 2, "error": 3}
+
+    dflog = pd.DataFrame(logdata)
+    dflog['y'] = dflog['type'].map(ymap) + 0.4 * (dflog.case_signature == "experiment")
+    dflog.time= pd.to_datetime(dflog['time'], unit='s')
+    dflog['symbol'] = dflog.case_signature.apply(lambda l: 101 if l != "experiment" else 102)
+    # dflog['level'] = 101 if 
+    return dflog, colmap
+
+
 def preproc_sim_data(HSsim):
 
-    dfSim = pd.DataFrame(HSsim)
-
+    dfSim = pd.DataFrame(HSsim).dropna()
+    dfSim.SimStep = dfSim.SimStep.apply(lambda x: x[0])
+    dfSim.C = dfSim.C.apply(lambda x: x[0])
     return dfSim
 
 
@@ -105,6 +118,8 @@ def preproc_curves_data(HScurves, dopad = False, **kwargs):
     HScurves = pd.DataFrame(HScurves)
 
     HScurves["stat"] = HScurves.IsNew * 1  + HScurves.filt*2 + (~HScurves.A) * 4 
+
+    HScurves['StepMod10'] = str(HScurves['SimStep']%10)
 
     if dopad:
         HScurves = pad(HScurves,["SimStep", "I", "stat" ])
@@ -138,19 +153,19 @@ def preproc_curves_data(HScurves, dopad = False, **kwargs):
     return HScurves, color_map
 
 
-def animate(SIM, save_path=None):
+def animate(curvesDF, hull_radius, color_map, **kwargs):
 
-    dfData, color_map = preproc_curves_data(SIM, dopad = True)
+    # curvesDF, curve_colors = preproc_curves_data(tracks['log']['data'], dopad = True)
 
-    stats = dfData['stat'].unique().astype(str).tolist()
+    stats = curvesDF['stat'].unique().astype(str).tolist()
     stats.sort()
 
     #R upper bound
-    Rub = SIM.hr*1.1
+    Rub = hull_radius*1.1
     
-    dfData = dfData.sort_values(by='SimStep', ascending=False)
+    curvesDF = curvesDF.sort_values(by='SimStep', ascending=False)
 
-    fig = px.scatter(dfData, x="X", y="Y",
+    fig = px.scatter(curvesDF, x="X", y="Y",
                         color="status", 
                         # animation_group="I",
                         range_x=[-Rub,Rub], range_y=[-Rub,Rub],
@@ -164,23 +179,14 @@ def animate(SIM, save_path=None):
                         #template="plotly_dark",)
                         
                         category_orders={"stat": stats},
-                        width=700, height=600,
+                        **kwargs,
                         # render_mode="SVG"
                         )
 
-    fig.update_layout(shapes = [casing(SIM.hr)])
+    fig.update_layout(shapes = [casing(hull_radius)])
  
-    fig.update_yaxes(
-        scaleanchor = "x",
-        scaleratio = 1
-        )
     fig.update_traces(marker=dict(size=4))
-    if save_path is not None:
-        fig.write_html(save_path, auto_play = False )
-
-    else:
-        fig.show()
-    return dfData
+    return fig
 
 
 def casing(R):
@@ -201,7 +207,7 @@ def casing(R):
     return shape
 
 
-def WebAndPerf(curvesDF, simDF, hull_radius, save_path = None):
+def Web(curvesDF, hull_radius, **kwargs):
 
     #R upper bound
     Rub = np.ceil(hull_radius*1.01) 
@@ -210,45 +216,76 @@ def WebAndPerf(curvesDF, simDF, hull_radius, save_path = None):
     grain = px.line(curvesDF, x="X", y="Y",
                         # color="stat", 
                         range_x=[-Rub,Rub], range_y=[-Rub,Rub],
-                        hover_data=["I"],                        
+                        hover_data=["I", "SimStep"],
+                        color='StepMod10'
                         # direction= "counterclockwise", start_angle=0,
                         #color_discrete_sequence=px.colors.sequential.Plasma_r, 
                         #template="plotly_dark",)
                         #category_orders={"stat": ["0", "1", "2", "3"]},
                         # width=700, height=600,
-                         render_mode="SVG"
+                        **kwargs
                         )
+    grain.update_layout(shapes=[casing(hull_radius)])
 
-    perf = px.line(simDF, x = 'SimStep', y = 'C', render_mode="SVG",)
+    return grain
 
-    fig = make_subplots(subplot_titles=('Web burned', 'Performance (Steps vs. Circumference)' ), rows=1, cols=2)
 
-    for trace in grain.data:
-        fig.add_trace(trace, row=1, col=1)
+def Perf(simDF , **kwargs):
 
-    # fig.add_trace(hull_trace, row=1, col=1)
+    perf = px.line(simDF, x = 'SimStep', y = 'C', **kwargs)
+    return perf
 
-    fig.update_layout(shapes=[casing(hull_radius)])
 
-    for trace in perf.data:
-        fig.add_trace(trace, row=1, col=2)
+def Log(dflog, colmap, **kwargs):
 
-    fig.update_yaxes(title_text='Y', row=1, col=1, scaleanchor = 'x', scaleratio=1)
+        fig = px.scatter(dflog, x = 'time', y = 'y', color = 'type', 
+                        hover_data = ['message', 'case_signature', 'case_index'], title = "Log data",
+                        labels = {'value': 'Value', 'time': 'Time (s)', 'type': 'Type'},
+                        color_discrete_map = colmap, **kwargs )
+
+        fig.update_traces(marker=dict(size=6,
+                                      symbol=dflog['symbol'],
+                          line=dict(width=2,
+                          color='DarkSlateGrey')))
+        fig.layout.yaxis.fixedrange = True
+        return fig
+
+
+def multiplot(rows=1, cols=2, width=600, height=600):
+    
+    width = width * cols
+    height = height * rows
+    
+    fig = make_subplots( rows, cols, horizontal_spacing=0.1, vertical_spacing=0.1,
+                        subplot_titles=('Web burned', 'Performance (Steps vs. Circumference)' ))
 
     # fig.update_layout(yaxis_range = [-Rmax, Rmax], xaxis_range = [-Rmax, Rmax], **self.conf("layout"))
     
     # 5) Optional layout tweaks
-    fig.update_layout(width=1200, height=600, margin=dict(l=50, r=50, t=50, b=10))
+    fig.update_layout(width=width, height=height) #, margin=dict(l=10, r=10, t=10, b=10))
     fig.update_yaxes(scaleanchor="x", scaleratio=1, row=1, col=1)
 
     fig.update_traces(marker=dict(size=1))
+    return fig
 
+
+def save_fig(fig, save_path = None):
     if save_path is not None:
         
         fig.write_html(save_path, auto_play = False )
 
     else:
         fig.show()
+
+
+def add_plot(multiplt, plot, row, col):
+    for trace in plot.data:
+        multiplt.add_trace(trace, row=row, col=col)
+
+    for f in plot.select_shapes():
+        multiplt.add_shape(f, row=row, col=col)
+    
+    return multiplt
 
 
 def Shape(R, T):
