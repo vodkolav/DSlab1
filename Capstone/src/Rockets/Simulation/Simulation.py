@@ -384,11 +384,11 @@ class Lagrangian:
         self.tele.print('Curve points (n):', self.n)
 
         C = 0 
-        npoints = self.I.shape
+        npoints = len(self.I)
         self.HSsim.collect(locals())
 
         for self.SimStep in range(steps):
-            npoints = self.I.shape
+            npoints = len(self.I)
             self.tele.ping("step:", self.SimStep, " | points:", npoints, " | circumference:", C)
 
             self.I, self.XY, self.A, C = self.step(self.I, self.XY, self.A )

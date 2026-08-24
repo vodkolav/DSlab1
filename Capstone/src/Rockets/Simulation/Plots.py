@@ -99,7 +99,7 @@ def preproc_log_data(logdata: dict):
 
     dflog = pd.DataFrame(logdata)
     dflog['y'] = dflog['type'].map(ymap) + 0.4 * (dflog.case_signature == "experiment")
-    dflog.time= pd.to_datetime(dflog['time'], unit='s')
+    dflog["time"] = pd.to_datetime(dflog["time"], unit='s')
     dflog['symbol'] = dflog.case_signature.apply(lambda l: 101 if l != "experiment" else 102)
     # dflog['level'] = 101 if 
     return dflog, colmap
@@ -119,7 +119,7 @@ def preproc_curves_data(HScurves, dopad = False, **kwargs):
 
     HScurves["stat"] = HScurves.IsNew * 1  + HScurves.filt*2 + (~HScurves.A) * 4 
 
-    HScurves['StepMod10'] = str(HScurves['SimStep']%10)
+    HScurves['StepMod10'] = (HScurves['SimStep']%10).astype(str)
 
     if dopad:
         HScurves = pad(HScurves,["SimStep", "I", "stat" ])
@@ -217,7 +217,7 @@ def Web(curvesDF, hull_radius, **kwargs):
                         # color="stat", 
                         range_x=[-Rub,Rub], range_y=[-Rub,Rub],
                         hover_data=["I", "SimStep"],
-                        color='StepMod10'
+                        color='StepMod10',
                         # direction= "counterclockwise", start_angle=0,
                         #color_discrete_sequence=px.colors.sequential.Plasma_r, 
                         #template="plotly_dark",)
