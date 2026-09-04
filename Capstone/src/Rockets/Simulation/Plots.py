@@ -4,21 +4,18 @@ import plotly.figure_factory as ff
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import plotly.express as px
-from Rockets.Geometry import pol2cart
+from Rockets.Geometry import pol2cart, cart2pol
 
 import json
 import ipywidgets as widgets
 from IPython.display import display, Javascript
 
-def dots_and_arrows(SIM, filtr, save_path = None, **kwargs):   
+def dots_and_arrows(dfC, color_map, dfI ):   
 
-    dfC, color_map = preproc_curves_data(SIM, dopad = False, **filtr)
+    # dfC, color_map = preproc_curves_data(SIM, dopad = False, **filtr)
 
     dfC["statCol"] = dfC.status.map(color_map)
 
-    dfI = SIM.HSintersections.results(**filtr)
-
-    dfI = pd.DataFrame(dfI)
 
     Ax, Ay = dfC.Ex - dfC.X, dfC.Ey - dfC.Y
 
@@ -41,15 +38,11 @@ def dots_and_arrows(SIM, filtr, save_path = None, **kwargs):
                              marker=dict(size=4, color=dfC.statCol), 
                              hovertext=dfC.I, name='ExEy'))
 
-    fig.update_layout(shapes = [casing(SIM.hr)])
+    # fig.update_layout(shapes = [casing(SIM.hr)])
 
     fig.update_layout(width=800, height=800)
 
-    if save_path is not None:
-        fig.write_html(save_path, auto_play = False, )
-
-    else:
-        fig.show()
+    return fig
 
 
 def Interactive_polar(df, **kwargs):
@@ -65,6 +58,45 @@ def Interactive_polar(df, **kwargs):
                         **kwargs
                         )
     fig.show()
+
+
+def minipad(df, index = "SimStep", col = 'I', value = "stat"):
+    """Pad a DataFrame to ensure that all combinations of index and columns are present.
+
+    Args:
+        df (pd.DataFrame): The input DataFrame to pad.
+        index (str, optional): The name of the index column. Defaults to "SimStep".
+        cols (list, optional): List of column names to consider for padding. Defaults to ['I'].
+        value (str, optional): The name of the value column. Defaults to "stat".
+
+    Returns:
+        pd.DataFrame: The padded DataFrame.
+    """
+
+    # index = "SimStep"  
+
+    # cols = ['I']
+
+    # value = "stat" 
+
+    lasti = df.groupby(index)[col].max()+1 # or min -1 ? 
+
+    lasti = lasti.reset_index()
+
+    Is = lasti.values 
+    Ss = df[value].unique()
+
+    Ss = np.expand_dims(Ss, axis = 1)
+    Ss
+
+    pld = [np.concat([a, b]) for a in Is for b in Ss]
+
+    pld = pd.DataFrame(pld, columns=[ index, col, value])
+
+    paddf = pd.concat([df,pld], axis=0)
+    paddf = paddf.sort_values(by=["SimStep", "I","stat"]).reset_index(drop=True)
+    return paddf
+
 
 def pad(df: pd.DataFrame, cols = ['frame', 'category'] ):
     """Workaround for plotly bug. 
@@ -131,12 +163,12 @@ def preproc_curves_data(HScurves, dopad = False, **kwargs):
 
     HScurves["stat"] = HScurves.IsNew * 1  + HScurves.filt*2 + (~HScurves.A) * 4 
 
+    if dopad:
+        HScurves = minipad(HScurves,"SimStep", "I", "stat" )
+
     sm10 = (HScurves['SimStep']%10)
 
     HScurves['StepMod10'] = sm10.astype(str)
-
-    if dopad:
-        HScurves = pad(HScurves,["SimStep", "I", "stat" ])
 
     cat_map = {
     0: "0old",
@@ -167,17 +199,27 @@ def preproc_curves_data(HScurves, dopad = False, **kwargs):
     return HScurves, color_map
 
 
+def preproc_intersections_data(HSintersections, **kwargs):
+
+    dfI = HSintersections.results()
+    
+    dfI = pd.DataFrame(dfI)
+
+    return dfI
+
+
 def animate(curvesDF, hull_radius, color_map, **kwargs):
 
     # curvesDF, curve_colors = preproc_curves_data(tracks['log']['data'], dopad = True)
 
-    stats = curvesDF['stat'].unique().astype(str).tolist()
+    stats = curvesDF['status'].unique().astype(str).tolist()
     stats.sort()
 
     #R upper bound
     Rub = hull_radius*1.1
-    
-    curvesDF = curvesDF.sort_values(by='SimStep', ascending=False)
+
+    asc = kwargs.get('ascending', True)
+    curvesDF = curvesDF.sort_values(by='SimStep', ascending=asc)
 
     fig = px.scatter(curvesDF, x="X", y="Y",
                         color="status", 
@@ -192,7 +234,7 @@ def animate(curvesDF, hull_radius, color_map, **kwargs):
                         #color_discrete_sequence=px.colors.sequential.Plasma_r, 
                         #template="plotly_dark",)
                         
-                        category_orders={"stat": stats},
+                        category_orders={"status": stats},
                         **kwargs,
                         # render_mode="SVG"
                         )
@@ -303,11 +345,21 @@ def add_plot(multiplt, plot, row, col):
     return multiplt
 
 
-def Shape(R, T):
+
+def Shape(**kwargs):
+    if 'R' in kwargs and 'T' in kwargs:
+        X, Y = pol2cart(R, T)
+
+    elif 'X' in kwargs and 'Y' in kwargs:
+        X = kwargs['X']
+        Y = kwargs['Y']
+        R,T = cart2pol(X,Y)
+    else:
+        raise ValueError("Shape function requires either 'R' and 'T' or 'X' and 'Y' keyword arguments.")
+
     Rmax = np.max(R) 
-    X, Y = pol2cart(R, T)
     mode='lines'
-    fig = px.line(x=X, y=Y)
+    fig = px.line(x=X, y=Y, render_mode='SVG')
     fig.update_layout(width=500 , height = 500, 
                       yaxis_range = [-Rmax, Rmax], 
                       xaxis_range = [-Rmax, Rmax])

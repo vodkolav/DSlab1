@@ -63,3 +63,16 @@ def  parse_sf_params(fn):
     k = [i.split("=") for i in j if "=" in i]
     l = {i[0]: trynumeric(i[1]) for i in k}
     return l 
+
+
+def reimport_function(func):
+    import importlib
+    fname = func.__name__
+    modl = importlib.import_module(func.__module__)
+    modl = importlib.reload(modl)
+    newfunc = getattr(modl, fname)
+    if func.__code__ != newfunc.__code__:
+        print(f"Function '{fname}' has been reloaded.")
+    else:
+        print(f"Function '{fname}' has not changed.") 
+    globals()[fname] = newfunc
