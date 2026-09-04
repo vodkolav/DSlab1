@@ -6,6 +6,10 @@ from plotly.subplots import make_subplots
 import plotly.express as px
 from Rockets.Geometry import pol2cart
 
+import json
+import ipywidgets as widgets
+from IPython.display import display, Javascript
+
 def dots_and_arrows(SIM, filtr, save_path = None, **kwargs):   
 
     dfC, color_map = preproc_curves_data(SIM, dopad = False, **filtr)
@@ -93,13 +97,21 @@ def pad(df: pd.DataFrame, cols = ['frame', 'category'] ):
     return padded_df
 
 
-def preproc_log_data(logdata: dict):
+def preproc_log_data(logdata: dict, epoch_precision = "s"):
     colmap = { "ping": "green", "info": "blue", "warning": "orange", "error": "red"}
     ymap = {"ping": 0, "info": 1, "warning": 2, "error": 3}
 
     dflog = pd.DataFrame(logdata)
     dflog['y'] = dflog['type'].map(ymap) + 0.4 * (dflog.case_signature == "experiment")
-    dflog["time"] = pd.to_datetime(dflog["time"], unit='s')
+
+    if epoch_precision == "s":
+        mult = 1000
+    elif epoch_precision == "ms":
+        mult = 1
+    else:
+        raise ValueError("epoch_precision possible values: 's', 'ns'")
+    dflog["time"] = dflog["time"]*mult
+    dflog["dt"] = pd.to_datetime(dflog["time"], unit='ms')# must be in ms
     dflog['symbol'] = dflog.case_signature.apply(lambda l: 101 if l != "experiment" else 102)
     # dflog['level'] = 101 if 
     return dflog, colmap
@@ -119,7 +131,9 @@ def preproc_curves_data(HScurves, dopad = False, **kwargs):
 
     HScurves["stat"] = HScurves.IsNew * 1  + HScurves.filt*2 + (~HScurves.A) * 4 
 
-    HScurves['StepMod10'] = (HScurves['SimStep']%10).astype(str)
+    sm10 = (HScurves['SimStep']%10)
+
+    HScurves['StepMod10'] = sm10.astype(str)
 
     if dopad:
         HScurves = pad(HScurves,["SimStep", "I", "stat" ])
@@ -238,16 +252,17 @@ def Perf(simDF , **kwargs):
 
 def Log(dflog, colmap, **kwargs):
 
-        fig = px.scatter(dflog, x = 'time', y = 'y', color = 'type', 
-                        hover_data = ['message', 'case_signature', 'case_index'], title = "Log data",
-                        labels = {'value': 'Value', 'time': 'Time (s)', 'type': 'Type'},
+        fig = px.scatter(dflog, x = 'time', y = 'y', color = 'type', #title = "Log data",
+                        hover_data = ['case_signature', 'case_index'], 
+                        custom_data= [list(dflog.index)],
+                        # labels = {'value': 'Value', 'time': 'Time (s)', 'type': 'Type'},
                         color_discrete_map = colmap, **kwargs )
-
-        fig.update_traces(marker=dict(size=6,
-                                      symbol=dflog['symbol'],
-                          line=dict(width=2,
-                          color='DarkSlateGrey')))
-        fig.layout.yaxis.fixedrange = True
+        # fig.update_xaxes(type="date", tickformat="%H:%M %b %d %Y")
+        # fig.update_traces(marker=dict(size=6,
+        #                               symbol=dflog['symbol'],
+        #                   line=dict(width=2,
+        #                   color='DarkSlateGrey')))
+        # fig.layout.yaxis.fixedrange = True
         return fig
 
 
@@ -297,3 +312,96 @@ def Shape(R, T):
                       yaxis_range = [-Rmax, Rmax], 
                       xaxis_range = [-Rmax, Rmax])
     fig.show()
+
+
+# Use a clean dataframe and keep only the fields you want
+# source_df = logdf.copy()#.reset_index( names='eventId')
+
+# Build a visible row payload for every point
+# fields = ["time", "y", "type", "message", "case_signature", "case_index", 'eventId']
+# payload = source_df[fields].copy()
+
+# Make the plot with customdata attached to each point
+# fig = px.scatter(
+#     source_df,
+#     x="time",
+#     y="y",
+#     color="type",
+#     hover_data=["message", "case_signature", "case_index"],
+#     custom_data= [list(source_df.index)],
+#     title="Log data",
+#     labels={"value": "Value", "time": "Time (s)", "type": "Type"},
+#     color_discrete_map=log_cmap,
+#     render_mode='SVG'
+# )
+
+def make_selector(fig, source_df):
+    # fig.layout.yaxis.fixedrange = True
+    fig.update_xaxes(type="date", tickformat="%H:%M \n %b %d %Y")
+    fig_w = go.FigureWidget(fig,
+                            layout=widgets.Layout(width="70%", 
+                                                  height="500px",
+                                                #   display="flex",
+                                                #   flex_flow="row"
+                                                  ))
+
+    # fig_w.update_xaxes(type="date", tickformat="%H:%M %b %d %Y")
+
+    copy_btn = widgets.Button(
+        description="Copy to clipboard",
+                layout=widgets.Layout(
+                    width="90%",
+                    display="flex",
+                    flex_flow="col")
+    )
+
+    selected_box = widgets.Textarea(
+        value="",
+        placeholder="Click a point on the plot...",
+        layout=widgets.Layout(
+                    width="90%",
+                    height="100%",
+                    display="flex",
+                    flex_flow="col"),
+        white_space="pre",
+        overflow="auto"
+        # description="Selected point:",
+        # description_display='initial'
+    )
+
+    def on_point_click(trace, points, selector):
+        if len(points.point_inds) == 0:
+            return
+        # display(trace, points, selector)
+        # This is the real clicked point payload from the trace
+        pid = points.point_inds[0],
+        pt = trace['customdata'][pid]
+        evId = pt[0]
+
+        row = dict(source_df.loc[evId,:])
+        selected_box.value = json.dumps(row, default=str, indent=2)
+
+
+    for tr in fig_w.data:
+        tr.on_click(on_point_click)
+
+    def copy_click(_):
+        val = selected_box.value
+        if not val:
+            return
+        display(Javascript(f"""
+            navigator.clipboard.writeText({json.dumps(val)});
+        """))
+
+    copy_btn.on_click(copy_click)
+
+    return widgets.HBox([
+                fig_w,
+                widgets.VBox([copy_btn, selected_box ],
+                            layout=widgets.Layout(
+                                width="30%",))],
+                layout=widgets.Layout(
+                    width="1500px",
+                    display="flex",
+                    flex_flow="row"))
+

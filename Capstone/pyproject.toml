@@ -36,6 +36,7 @@ dependencies = [
     "packaging==26.2",
     "platformdirs==4.9.6",
     "plotly>=6.7.0",
+    "anywidget",
     "requests==2.34.2",
     "retrying==1.4.2",
     "scipy==1.17.1",
