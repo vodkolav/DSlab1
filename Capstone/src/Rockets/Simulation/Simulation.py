@@ -1,7 +1,8 @@
 
 import numpy as np
 from scipy.interpolate import Rbf, CubicSpline
-from Rockets.Geometry import circumference, normals, Magn, cslice, pol2cart, cart2pol, intersections, slerp
+from Rockets.Geometry import circumference, normals, Magn, cslice, pol2cart,\
+                            cart2pol, intersections, slerp, rarefactions, segments
 from Benchmarking.sensors.Harvester import Harvester
 
 from Benchmarking.telemetry_manager import DummyTelemetryManager
@@ -49,17 +50,25 @@ class Lagrangian:
         
         # normals; size: [n,2]
         self.N = []
-        
-        # segment direction vectors; size: [n,2]
-        self.S = []
+
 
         #Variables
         self.SimStep=0
         self.I, self.RT, self.XY = self.grain(func, self.n)
 
         # XY = np.stack((self.X,self.Y), axis=1)
-        self.segments(self.XY)
-        self.I, self.XY = self.fill_holes(self.I, self.XY)
+        # segment direction vectors; size: [n,2]
+        self.S = segments(self.XY)
+
+        self.M = Magn(self.S)
+
+        divergents = rarefactions(self.M, self.d)
+
+        newI, newXY =  self.fill(self.I, self.XY, divergents )
+
+        XY = np.insert(self.XY, newI, newXY, axis=0)
+        I = np.arange(self.XY.shape[0])
+        self.I, self.XY = I, XY
 
         self.IsNew = np.zeros_like(self.I)
         
@@ -70,22 +79,14 @@ class Lagrangian:
 
         self.HSsim = Harvester(["self.SimStep", "C", "npoints"])
 
-        self.HSintersections = Harvester(varnames=["self.SimStep", "i", "j", "ti", "tj", "Px", "Py",
-                                                "clas", "condi", "condj"],
-                                        elems='valid')
-
-        # self.HScurves = Harvester(varnames=["self.I", "self.XY", "self.A", "self.IsNew",
-        #                             "self.SimStep", "self.N", "E", "self.d", "filt"], 
-        #                             on_size_mismatch='error')
-                                    #"I1","X1", "Y1", circ, , "isNew" 
 
 
     def dump_curves(self, fnlocals):
         pass
 
-    def segments(self, XY):
-        Ends = np.concatenate((XY[-1:,:],XY[:-1,:]), axis=0) # segment end points 
-        self.S = Ends - XY # segment direction vectors
+
+    def dump_intersections(self, fnlocals):
+        pass
 
 
     def curve_intersections(self, XY):
@@ -142,34 +143,11 @@ class Lagrangian:
                 newXY = np.concatenate((newXY, P[j_block:j_block+1,:]), axis=0)
                 newI = np.concatenate((newI, [j]), axis=0)
 
-
-            self.HSintersections.collect(locals())
+            self.dump_intersections(locals())
 
         return filt, (newI % n).astype(int), newXY
 
 
-    # rarefactions: 
-    def rarefactions(self):
-        
-        # XY = np.stack((X,Y), axis=1)
-        # # n = XY.shape[0]
-
-        # c = XY # segment start points
-
-        # c1 = np.concatenate((c[-1:,:],c[:-1]), axis=0) # segment end points 
-        # v = c1 - c # segment direction vectors    
-
-        v = self.S
-
-        m = Magn(v)
-
-        # isNew = np.zeros_like(X, dtype=bool)
-
-        quantiles = np.sum(m[:, None] > m, axis=1) / (len(m) - 1)
-        # only take the points in the top 2% of segment lengths, e.g points that diverged the most
-        divergents = (m > self.d) & (quantiles > .95) 
-
-        return divergents
 
 
     def interpolate(self, XY, xy):
@@ -203,53 +181,49 @@ class Lagrangian:
         else:
             # add multiple points along the segment vector
             # direction vectors of divergents
-            # hi = XY[divergents+1,:] - XY[divergents,:]
-            hi = self.S[divergents,:]
 
-            l = Magn(hi)
-            jj = (l/self.d).astype(int)       
+            S_d = self.S[divergents,:,None] # segments direction vectors of divergents
+            # The 'None' pre-expands S into 3rd dimension so that s elements play nicely with np.dot down the line
 
-            dividx = I[divergents]
+            l_d = Magn(S_d).squeeze() # lengths of those segments
 
+            P_d = (l_d/self.d).astype(int) # number of points to add along each such segment
 
-            if any(l > 1):
-                self.tele.warning("oops") # TODO: maybe even error?
+            I_d = I[divergents] # indices of the divergent segments
+
 
             # cubXY = np.zeros((0,2))
             newXY = np.zeros((0,2))
             newI = np.zeros(0)
 
-            for i,rr in enumerate(dividx):
+            for s,l,p,i in zip(S_d, l_d, P_d, I_d):
 
                 xy = []
-                onns = np.ones(jj[i]-1)
+                onns = np.ones(p)
 
                 if self.method in ('manydumb', 'interp'):
-                    j = np.arange(1, jj[i]).reshape(jj[i]-1,1) 
+                    ofsts = np.linspace([0,],[l,],p+2)[1:-1]
 
-                    wat = np.dot(j,hi[[i],:])
-                    
-                    xy = XY1[rr,:] + wat / jj[i]
-                    
-                    # xyl = xy.copy()
+                    wat = np.dot(ofsts, s.T)
 
-                    # if (xy > 5).sum() > 0:
-                    #     print(xyl)
+                    j = cslice(i,i+1,XY1.shape[0])
+                    xy  = XY1[j,:] + wat 
+
 
                 if self.method == 'interp':
-                    slc = cslice(rr-3,rr+3, XY1.shape[0])
+                    slc = cslice(i-3,i+3, XY1.shape[0])
                     xy = self.interpolate(XY1[slc,:], xy)
 
                 if self.method == 'slerp':
                     # not working! 
-                    f,t = cslice(rr-1,rr+1, XY1.shape[0])
+                    f,t = cslice(i-1,i+1, XY1.shape[0])
                     newN = slerp(self.N[f,:], self.N[t,:], self.d)
                     xy = self.advance(XY1[f,:], newN, self.d, True)
                     onns = np.ones(xy.shape[0])
 
                 newXY = np.concatenate((newXY, xy), axis=0)
 
-                newI = np.concatenate((newI, onns*(rr)), axis=0)
+                newI = np.concatenate((newI, onns*(i)), axis=0)
                 # print("a", a)
             newI = newI.astype(int)
             newI, newXY
@@ -284,7 +258,7 @@ class Lagrangian:
         # Prepare arrays
         # E = np.stack((Ex, Ey), axis=1)  # (n,2)
 
-        self.segments(E)
+        self.S = segments(E)
 
         filt, iI, iXY  = self.curve_intersections(E) # *(1+s*0.1)
 
@@ -314,9 +288,13 @@ class Lagrangian:
 
         I1 = np.arange(XY1.shape[0])
 
-        self.segments(XY1)
+        self.S = segments(XY1)
+        v = self.S
 
-        divergents = self.rarefactions()
+        m = Magn(v)
+
+
+        divergents = rarefactions(m, self.d)
 
         newI, newXY =  self.fill(I1, XY1, divergents )
 
@@ -358,15 +336,7 @@ class Lagrangian:
         return I, RT, XY 
 
 
-    def fill_holes(self, I, XY):
-        divergents = self.rarefactions()
 
-        newI, newXY =  self.fill(I, XY, divergents )
-
-        XY = np.insert(XY, newI, newXY, axis=0)
-        # Y = np.insert(Y, newI, newY, axis=0)
-        I = np.arange(XY.shape[0])
-        return I, XY
 
 
     def run(self, steps = 1):

@@ -83,6 +83,11 @@ def normals(XY):
     return N_consistent
 
 
+def segments(XY):
+    Ends = np.concatenate((XY[-1:,:],XY[:-1,:]), axis=0) # segment end points 
+    return Ends - XY # segment direction vectors
+
+
 def intersections(c0, v0, c_block, v_block):
     C = c_block - c0
 
@@ -101,6 +106,14 @@ def intersections(c0, v0, c_block, v_block):
     valid = den != 0
     return ti,tj,valid
 
+# rarefactions: 
+def rarefactions(m, d, q = .95):
+
+    quantiles = np.sum(m[:, None] > m, axis=1) / (len(m) - 1)
+    # only take the points in the top 5% of segment lengths, e.g points that diverged the most
+    divergents = (m > d) & (quantiles > q) 
+
+    return divergents
 
 def cslice(start, stop, n):
     """circular slice. like a clock
