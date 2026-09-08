@@ -124,7 +124,7 @@ class Lagrangian:
             valid = valid & condi & condj
 
             P = c0 + np.stack((ti,ti), axis=1) * v0
-            Px = P[:,0]
+            Px = P[:,0] #TODO: harvester can break these up by himself
             Py = P[:,1]
 
             if any(condi & condj):
@@ -166,27 +166,28 @@ class Lagrangian:
                 newI = I[divergents]
         else:
             # add multiple points along the segment vector
+            
+            I_d = I[divergents] # indices of the divergent segments
 
             S_d = self.S[divergents,:,None] # segments direction vectors of divergents
-            # The 'None' pre-expands S into 3rd dimension so that s elements play nicely with np.dot down the line
+                                            # The 'None' pre-expands S into 3rd dimension 
+                                            # so that s elements play nicely with np.dot down the line
 
-            l_d = Magn(S_d).squeeze() # lengths of those segments
+            l_d = self.M[divergents]  # lengths of those segments
 
             P_d = (l_d/self.d).astype(int) # number of points to add along each such segment
-
-            I_d = I[divergents] # indices of the divergent segments
 
 
             newXY = np.zeros((0,2))
             newI = np.zeros(0)
 
-            for s,l,p,i in zip(S_d, l_d, P_d, I_d):
+            for i,s,p in zip(I_d, S_d, P_d):
 
                 xy = []
                 onns = np.ones(p)
 
                 if self.method in ('manydumb', 'interp'):
-                    ofsts = np.linspace([0,],[l,],p+2)[1:-1]
+                    ofsts = np.linspace([0,],[1,],p+2)[1:-1]
 
                     wat = np.dot(ofsts, s.T)
 
@@ -208,7 +209,7 @@ class Lagrangian:
                 newXY = np.concatenate((newXY, xy), axis=0)
 
                 newI = np.concatenate((newI, onns*(i)), axis=0)
-                # print("a", a)
+
             newI = newI.astype(int)
             newI, newXY
 
@@ -243,6 +244,8 @@ class Lagrangian:
 
         self.dump_curves(locals())
 
+        # from this point on the old I, XY, A are obsolete
+
         isNew1 = np.zeros_like(I)
 
         XY1 = np.insert(E, iI, iXY, axis=0)
@@ -260,11 +263,10 @@ class Lagrangian:
         I1 = np.arange(XY1.shape[0])
 
         self.S = segments(XY1)
-        v = self.S
 
-        m = Magn(v)
+        self.M = Magn(self.S)
 
-        divergents = rarefactions(m, self.d)
+        divergents = rarefactions(self.M, self.d)
 
         newI, newXY =  self.fill(I1, XY1, divergents )
 
