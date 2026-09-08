@@ -56,7 +56,6 @@ class Lagrangian:
         self.SimStep=0
         self.I, self.RT, self.XY = self.grain(func, self.n)
 
-        # XY = np.stack((self.X,self.Y), axis=1)
         # segment direction vectors; size: [n,2]
         self.S = segments(self.XY)
 
@@ -73,9 +72,6 @@ class Lagrangian:
         self.IsNew = np.zeros_like(self.I)
         
         self.A = self.active(self.XY)
-
-        # Hr = np.ones_like(self.T)*self.hr
-        # self.Hx, self.Hy = pol2cart(Hr, self.T)
 
         self.HSsim = Harvester(["self.SimStep", "C", "npoints"])
 
@@ -96,8 +92,6 @@ class Lagrangian:
 
 
         n = XY.shape[0]
-
-        # XY = XY # segment start points
 
 
         filt = np.zeros(n).astype(bool)
@@ -165,14 +159,6 @@ class Lagrangian:
 
     def fill(self, I, XY1, divergents):
 
-        #XY = np.stack((X,Y), axis=1)
-        # n = XY.shape[0]
-
-        # c = XY # segment start points
-
-        # c1 = np.concatenate((c[-1:,:],c[:-1]), axis=0) # segment end points 
-        # v = c1 - c # segment direction vectors    
-        # v = self.S
 
         if self.method == 'dumb':
                 # simplest interpolation: just add half the segment vector to the start point of the segment
@@ -180,7 +166,6 @@ class Lagrangian:
                 newI = I[divergents]
         else:
             # add multiple points along the segment vector
-            # direction vectors of divergents
 
             S_d = self.S[divergents,:,None] # segments direction vectors of divergents
             # The 'None' pre-expands S into 3rd dimension so that s elements play nicely with np.dot down the line
@@ -192,7 +177,6 @@ class Lagrangian:
             I_d = I[divergents] # indices of the divergent segments
 
 
-            # cubXY = np.zeros((0,2))
             newXY = np.zeros((0,2))
             newI = np.zeros(0)
 
@@ -228,7 +212,6 @@ class Lagrangian:
             newI = newI.astype(int)
             newI, newXY
 
-        # newX, newY =  newXY[:,0], newXY[:,1]
         return newI, newXY
 
 
@@ -240,14 +223,11 @@ class Lagrangian:
 
     def advance(self, O, N, d, A):
         dd = np.ones([2,1]) * d
-        # Ex, Ey =  X + self.d * A * Nx , Y + self.d * A * Ny
         E =  O + (dd * A).T * N
         return E
 
 
     def step(self, I, XY, A):
-
-        # XY = np.stack((X,Y), axis=1)
 
         self.N = normals(XY)
 
@@ -255,25 +235,17 @@ class Lagrangian:
         if not (XY.shape[0]  == self.N.shape[0] == I.shape[0]):
             raise ValueError('All inputs must have same length')
 
-        # Prepare arrays
-        # E = np.stack((Ex, Ey), axis=1)  # (n,2)
 
         self.S = segments(E)
 
         filt, iI, iXY  = self.curve_intersections(E) # *(1+s*0.1)
-
-
         # filt is True where the points should be filtered out / dropped
 
-        # self.HScurves.collect(locals())
         self.dump_curves(locals())
-
-
 
         isNew1 = np.zeros_like(I)
 
         XY1 = np.insert(E, iI, iXY, axis=0)
-        # Y1 = np.insert(Ey, iI, iY, axis=0)
 
         iF = np.zeros_like(iI).astype(bool)
         F1 = np.insert(filt, iI, iF, axis=0)
@@ -283,7 +255,6 @@ class Lagrangian:
 
         if filt.size != 0: #TODO should check if filt has any True instead
             XY1 = XY1[~F1]
-            # Y1 = Y1[~F1]
             isNew1 = isNew1[~F1]
 
         I1 = np.arange(XY1.shape[0])
@@ -293,13 +264,11 @@ class Lagrangian:
 
         m = Magn(v)
 
-
         divergents = rarefactions(m, self.d)
 
         newI, newXY =  self.fill(I1, XY1, divergents )
 
         news = np.ones_like(newI)
-
 
         XY1 = np.insert(XY1, newI, newXY, axis=0)
         I1 = np.arange(XY1.shape[0])
@@ -310,7 +279,6 @@ class Lagrangian:
         A1 = self.active(XY1)
         dd = np.ones([2,1]) * self.d
         dA1 = (dd * A1).T
-        # S = np.ones_like(A)*s
         C = circumference(XY1*dA1)
 
         return I1, XY1, A1, C
@@ -334,9 +302,6 @@ class Lagrangian:
         XY = np.stack((X,Y), axis=1)
 
         return I, RT, XY 
-
-
-
 
 
     def run(self, steps = 1):
@@ -374,6 +339,4 @@ class Lagrangian:
 
         #TODO return the performance curve. think more on representation
         return self.HSsim.results()
-
-
 
