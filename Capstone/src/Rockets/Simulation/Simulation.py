@@ -1,8 +1,8 @@
 
 import numpy as np
-from scipy.interpolate import Rbf, CubicSpline
 from Rockets.Geometry import circumference, normals, Magn, cslice, pol2cart,\
-                            cart2pol, intersections, slerp, rarefactions, segments
+                            cart2pol, intersections, slerp, rarefactions, segments,\
+                            interp
 from Benchmarking.sensors.Harvester import Harvester
 
 from Benchmarking.telemetry_manager import DummyTelemetryManager
@@ -142,19 +142,39 @@ class Lagrangian:
         return filt, (newI % n).astype(int), newXY
 
 
+    def interpolate(self, XY1, i, s, p, method):
+        xy = []
+
+        if method in ('manydumb'):
+            ofsts = np.linspace([0,],[1,],p+2)[1:-1]
+
+            wat = np.dot(ofsts, s.T)
+
+            j = cslice(i,i+1,XY1.shape[0])
+            xy  = XY1[j,:] + wat 
 
 
-    def interpolate(self, XY, xy):
-        x,y = np.split(XY,2, axis=1)
-        xi,_ = np.split(xy,2, axis=1)
-        # TODO: option to choose interpolation method in simulation settings.
-        # rbf = Rbf(x, y)
-        rbf = Rbf(x.squeeze(), y.squeeze())
-        yi = rbf(xi)
+        elif method == 'interp':
+            # first, calculate x values where y needs to be interpolated
+            xy = self.interpolate(XY1, i,s,p, method = 'manydumb')
+            slc = cslice(i-3,i+3, XY1.shape[0])
+            try:
+                xy = interp(XY1[slc,:], xy)
+            except Exception as e:
+                self.tele.error(e)
 
-        if (np.abs(yi) > 5).sum() > 0:
-            self.tele.print(xy)
-        return np.concatenate((xi,yi), axis = 1)
+
+        elif method == 'slerp':
+            # not working! 
+            f,t = cslice(i-1,i+1, XY1.shape[0])
+            newN = slerp(self.N[f,:], self.N[t,:], self.d)
+            xy = self.advance(XY1[f,:], newN, self.d, True)
+            onns = np.ones(xy.shape[0])
+
+        else: 
+            raise KeyError(f" method {method} not recognized")
+
+        return xy
 
 
     def fill(self, I, XY1, divergents):
@@ -166,7 +186,7 @@ class Lagrangian:
                 newI = I[divergents]
         else:
             # add multiple points along the segment vector
-            
+
             I_d = I[divergents] # indices of the divergent segments
 
             S_d = self.S[divergents,:,None] # segments direction vectors of divergents
@@ -182,36 +202,16 @@ class Lagrangian:
             newI = np.zeros(0)
 
             for i,s,p in zip(I_d, S_d, P_d):
-
-                xy = []
                 onns = np.ones(p)
 
-                if self.method in ('manydumb', 'interp'):
-                    ofsts = np.linspace([0,],[1,],p+2)[1:-1]
-
-                    wat = np.dot(ofsts, s.T)
-
-                    j = cslice(i,i+1,XY1.shape[0])
-                    xy  = XY1[j,:] + wat 
-
-
-                if self.method == 'interp':
-                    slc = cslice(i-3,i+3, XY1.shape[0])
-                    xy = self.interpolate(XY1[slc,:], xy)
-
-                if self.method == 'slerp':
-                    # not working! 
-                    f,t = cslice(i-1,i+1, XY1.shape[0])
-                    newN = slerp(self.N[f,:], self.N[t,:], self.d)
-                    xy = self.advance(XY1[f,:], newN, self.d, True)
-                    onns = np.ones(xy.shape[0])
+                xy = self.interpolate(XY1, i, s,p, self.method)
 
                 newXY = np.concatenate((newXY, xy), axis=0)
 
                 newI = np.concatenate((newI, onns*(i)), axis=0)
 
             newI = newI.astype(int)
-            newI, newXY
+            # newI, newXY
 
         return newI, newXY
 
@@ -291,6 +291,7 @@ class Lagrangian:
             return self.SimStep
         else:
             return self.HSsim.last_step()
+
 
     def grain(self, func, n):
         T = np.linspace(0, np.pi*2, n, endpoint=False) - 0.0001

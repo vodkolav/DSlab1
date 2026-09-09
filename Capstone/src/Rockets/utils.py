@@ -76,3 +76,38 @@ def reimport_function(func):
     else:
         print(f"Function '{fname}' has not changed.") 
     globals()[fname] = newfunc
+
+
+
+def trypop(obj: dict, key, default=None):
+    """pop item from dict id it exists. if not, return default
+        (Why does it not exist already in dict?)
+
+    Args:
+        obj (dict): _description_
+        key (_type_): _description_
+        default (_type_, optional): _description_. Defaults to None.
+
+    Returns:
+        _type_: _description_
+    """
+    if key in obj.keys():
+        return obj.pop(key)
+    else: 
+        return default
+
+
+def ia(obj):
+    """idempotent list/aray
+        ensures obj is of type list. if not - encloses in a list.
+
+    Args:
+        obj (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
+    res = obj if isinstance(obj,list) else [obj]
+    return res
+
+

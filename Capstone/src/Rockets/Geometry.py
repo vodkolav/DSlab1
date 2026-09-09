@@ -1,5 +1,7 @@
 import numpy as np
 
+from scipy.interpolate import RBFInterpolator 
+
 NPERRSTATE = 'warn' # 'ignore' # 'warn' # 'raise' # 'log' # 'print' # 'call'
 
 def cart2pol(x, y):
@@ -149,6 +151,22 @@ def arc_lens(X,Y):
     diff = np.diff(XY, axis=0)
     Lens = np.sqrt(np.sum(diff ** 2, axis=1))
     return Lens
+
+
+def interp(XY,xy):
+    if XY[0,0]>XY[-1,0]:
+        XY = XY[::-1,:]
+
+    XX = XY[:,0,None]
+    YY = XY[:,1]
+
+    x = xy[:,0,None]
+    model = RBFInterpolator(XX, YY)
+    y = model(x)
+    
+    xy = np.stack([x[:,0],y],axis=1)
+
+    return xy
 
 
 def slerp(v1, v2, d):

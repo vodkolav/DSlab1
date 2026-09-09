@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import plotly.express as px
 from Rockets.Geometry import pol2cart, cart2pol
+from Rockets.utils import trypop, ia
 
 import json
 import ipywidgets as widgets
@@ -194,7 +195,9 @@ def preproc_curves_data(HScurves, dopad = False, **kwargs):
     "7new_die_fin": "#282C04"
     }
 
-    # HScurves["statCol"] = HScurves.status.map(color_map)
+    HScurves["statCol"] = HScurves.status.map(color_map)
+
+    HScurves['hovertext'] =  HScurves.apply( lambda r : "<br>".join([ f"I: {r.I}", f"St: {r.status}"]), axis=1)
 
     return HScurves, color_map
 
@@ -218,8 +221,10 @@ def animate(curvesDF, hull_radius, color_map, **kwargs):
     #R upper bound
     Rub = hull_radius*1.1
 
-    asc = kwargs.get('ascending', True)
+    asc = trypop(kwargs, 'ascending', True)
     curvesDF = curvesDF.sort_values(by='SimStep', ascending=asc)
+
+    lockscale = trypop(kwargs,"lockscale", False)
 
     fig = px.scatter(curvesDF, x="X", y="Y",
                         color="status", 
@@ -240,8 +245,10 @@ def animate(curvesDF, hull_radius, color_map, **kwargs):
                         )
 
     fig.update_layout(shapes = [casing(hull_radius)])
- 
     fig.update_traces(marker=dict(size=4))
+
+    if lockscale:
+        fig.update_yaxes(scaleanchor="x", scaleratio=1)
     return fig
 
 
@@ -294,8 +301,12 @@ def Perf(simDF , **kwargs):
 
 def Log(dflog, colmap, **kwargs):
 
+        more = trypop(kwargs, 'hover_data', [])
+
+        hover_data = ['case_signature', 'case_index'] + ia(more)
+
         fig = px.scatter(dflog, x = 'time', y = 'y', color = 'type', #title = "Log data",
-                        hover_data = ['case_signature', 'case_index'], 
+                        hover_data = hover_data, 
                         custom_data= [list(dflog.index)],
                         # labels = {'value': 'Value', 'time': 'Time (s)', 'type': 'Type'},
                         color_discrete_map = colmap, **kwargs )
