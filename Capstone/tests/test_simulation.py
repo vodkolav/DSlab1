@@ -18,7 +18,7 @@ steps = 50
 n = 1000
 window_size = 70
 hull_radius = 4
-interp = 'interp' # 'manydumb' #' #'dumb' #
+interp = "interp_parametric" # 'interp' # 'manydumb' #' #'dumb' #
 #interp = 'slerp'
 
 trw = {

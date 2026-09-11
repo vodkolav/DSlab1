@@ -2,7 +2,7 @@
 import numpy as np
 from Rockets.Geometry import circumference, normals, Magn, cslice, pol2cart,\
                             cart2pol, intersections, slerp, rarefactions, segments,\
-                            interp
+                            interp, interp_parametric
 from Benchmarking.sensors.Harvester import Harvester
 
 from Benchmarking.telemetry_manager import DummyTelemetryManager
@@ -35,9 +35,9 @@ class Lagrangian:
 
         self.d = d
 
-        avail_methods = ['dumb', 'manydumb', 'interp', 'slerp']
+        avail_methods = ['dumb', 'manydumb', 'interp', 'interp_parametric', 'slerp']
         if interp_method not in avail_methods:
-            raise ValueError("method must be one of " + str(avail_methods))
+            raise ValueError("method must be one of " + str(avail_methods) + " given: " + interp_method)
         self.method = interp_method
 
         self.hr = hull_radius
@@ -164,6 +164,27 @@ class Lagrangian:
                 self.tele.error(e)
 
 
+        elif method == 'interp_parametric':
+
+            w=3 # half-width of the interpolation chord window 
+
+            ofsts = np.linspace(0,1,p+2)[1:-1]
+
+            slc = cslice(i-w,i+w, XY1.shape[0])
+
+            XY_v = XY1[slc,:]
+            d_v = self.M[slc]
+
+            t_v =  np.cumsum(np.concatenate([[0], d_v[:-1]]))
+
+            t_new = t_v[w-1] + d_v[w-2] * ofsts
+
+
+            try:
+                xy = interp_parametric(XY_v, t_v, t_new)
+            except Exception as e:
+                self.tele.error(e)
+
         elif method == 'slerp':
             # not working! 
             f,t = cslice(i-1,i+1, XY1.shape[0])
@@ -204,7 +225,7 @@ class Lagrangian:
             for i,s,p in zip(I_d, S_d, P_d):
                 onns = np.ones(p)
 
-                xy = self.interpolate(XY1, i, s,p, self.method)
+                xy = self.interpolate(XY1, i, s, p, self.method)
 
                 newXY = np.concatenate((newXY, xy), axis=0)
 
@@ -217,6 +238,8 @@ class Lagrangian:
 
 
     def active(self, XY):
+        # Note: this assumes the center of hull is at (0,0)
+        # otherwise it will give incorrect result
         R = Magn(XY)
         A = R < self.hr
         return A

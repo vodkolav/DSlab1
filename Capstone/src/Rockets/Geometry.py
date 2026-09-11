@@ -1,6 +1,6 @@
 import numpy as np
 
-from scipy.interpolate import RBFInterpolator 
+from scipy.interpolate import RBFInterpolator , CubicSpline
 
 NPERRSTATE = 'warn' # 'ignore' # 'warn' # 'raise' # 'log' # 'print' # 'call'
 
@@ -167,6 +167,21 @@ def interp(XY,xy):
     xy = np.stack([x[:,0],y],axis=1)
 
     return xy
+
+
+def interp_parametric(xy_vicinity, t_vicinity, t_new):
+    """
+    Interpolates a local chord of a curve to fill gaps.
+    xy_vicinity: array of x,y coordinates of existing points in the vicinity of the gap
+    t_vicinity: cumulative chord length parameter which x, y depend on ( x = f(t), y = g(t))
+    t_new: values of t where to generate new x,y from interpolation.
+    """
+
+    spline = CubicSpline(t_vicinity, xy_vicinity, bc_type='natural')
+
+    interpolated_points = spline(t_new)
+
+    return interpolated_points
 
 
 def slerp(v1, v2, d):
