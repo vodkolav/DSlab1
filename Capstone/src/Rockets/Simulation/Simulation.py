@@ -66,7 +66,7 @@ class Lagrangian:
         newI, newXY =  self.fill(self.I, self.XY, divergents )
 
         XY = np.insert(self.XY, newI, newXY, axis=0)
-        I = np.arange(self.XY.shape[0])
+        I = np.arange(XY.shape[0])
         self.I, self.XY = I, XY
 
         self.IsNew = np.zeros_like(self.I)

@@ -44,22 +44,6 @@ class SimPipeline(Pipeline):
         # self.tele.AttachSensor(self, "execute", pth, config = conf)
 
 
-    def init_telemetry(self):
-        # re-runs for every new case
-        # TODO: attach monitors for particular pipeline components 
-
-        tracks = [
-            ".tracks.episodes",
-            ".tracks.harvest.curves"
-            #,".tracks.resources" 
-            #,".tracks.log",
-            #,".model_tts.tracks.log"
-            ] 
-
-        self.tele.AttachSensor(self.SIM, "step", tracks[0], summary_func = "step_summary")
-        self.tele.AttachSensor(self.SIM, "dump_curves", tracks[1])
-
-        self.SIM.tele = self.tele
 
     def init_sim(self, new_case):
 
@@ -71,6 +55,7 @@ class SimPipeline(Pipeline):
 
         self.SIM = Lagrangian(self.profile, **new_case.config["simulation"])
 
+        return self.SIM
 
     def run_case(self, ):
         self.simResult = self.SIM.run(self.case_config["simulation"]["steps"])
