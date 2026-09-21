@@ -75,8 +75,7 @@ def reimport_function(func):
         print(f"Function '{fname}' has been reloaded.")
     else:
         print(f"Function '{fname}' has not changed.") 
-    globals()[fname] = newfunc
-
+    return newfunc
 
 
 def trypop(obj: dict, key, default=None):

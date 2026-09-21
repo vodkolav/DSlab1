@@ -11,37 +11,60 @@ import json
 import ipywidgets as widgets
 from IPython.display import display, Javascript
 
-def dots_and_arrows(dfC, color_map, dfI ):   
+def dots_and_arrows(dfC, color_map, dfI, **kwargs):   
 
-    # dfC, color_map = preproc_curves_data(SIM, dopad = False, **filtr)
 
     dfC["statCol"] = dfC.status.map(color_map)
 
+    lockscale = trypop(kwargs,"lockscale", False)
 
-    Ax, Ay = dfC.Ex - dfC.X, dfC.Ey - dfC.Y
 
-    fig = ff.create_quiver(dfC.X, dfC.Y, Ax, Ay, hovertext=dfC.I, 
-                           scale=1, arrow_scale=.05, name='offset')
+    Nx, Ny = dfC.Ex - dfC.X, dfC.Ey - dfC.Y
 
-    fig.add_trace(go.Scatter(x=dfI.Px, y=dfI.Py,  hovertext = dfI.clas,
-                             mode='markers',name='intersections',
-                             marker=dict(size=6, color = dfI.clas, symbol = 'x')
+    fig = ff.create_quiver(x=dfC.X, y=dfC.Y, u=Nx, v=Ny, 
+                           name='offset',
+                           hoverinfo = 'text',
+                           hovertext=dfC.hovertext, 
+                           scale=1, arrow_scale=.05)
+
+    fig.add_trace(go.Scatter(x=dfI.Px, y=dfI.Py,
+                             name='intersections',
+                             hovertext = dfI.hovertext,
+                             marker=dict(size=6,
+                                         color = dfI.clas, 
+                                         symbol = 'x'),
+                             mode='markers',
                              ))
 
-    fig.add_trace(go.Scatter(x=dfC.X, y=dfC.Y, hovertext=dfC.I, name='XY',
-                             marker=dict(size=4), # , color=dfC.statCol
+    fig.add_trace(go.Scatter(x=dfC.X, y=dfC.Y,
+                             name='XY',
+                             hovertext=dfC.I,
+                             marker=dict(
+                                        size=4),
+                            # color=dfC.statCol,
                              mode='lines' 
                             ))
 
-    fig.add_trace(go.Scatter(x=dfC.Ex, y=dfC.Ey, mode='lines',  name='ExEy-line'))    
+    fig.add_trace(go.Scatter(x=dfC.Ex, y=dfC.Ey, 
+                             name='ExEy-line',
+                             mode='lines',
+                             hovertext=dfC.hovertext,
+                             ))
 
-    fig.add_trace(go.Scatter(x=dfC.Ex, y=dfC.Ey, mode='markers', 
-                             marker=dict(size=4, color=dfC.statCol), 
-                             hovertext=dfC.I, name='ExEy'))
+    fig.add_trace(go.Scatter(x=dfC.Ex, y=dfC.Ey, 
+                             name='ExEy',
+                             hovertext=dfC.hovertext,
+                             marker=dict(size=4,
+                                         color=dfC.statCol), 
+                             mode='markers',
+                             ))
 
     # fig.update_layout(shapes = [casing(SIM.hr)])
 
     fig.update_layout(width=800, height=800)
+
+    if lockscale:
+        fig.update_yaxes(scaleanchor="x", scaleratio=1)
 
     return fig
 
@@ -158,11 +181,47 @@ def preproc_sim_data(HSsim):
     return dfSim
 
 
+def from_md(txt: str):
+    from io import StringIO
+
+    mapping = pd.read_table(StringIO(txt), sep="\\s*\\|\\s*", 
+                            header=0, index_col=7, 
+                            skipinitialspace=True,
+                            engine='python'
+                            ).\
+                 dropna(axis=1, how='all').\
+                 iloc[1:]
+    mapping.index = mapping.index.astype(int)
+    return mapping
+
+
+ColorMappingMD = """
+|    Hex  | clr | F    | B    | E    |  desc        | stt |
+| ------- | --- | ---- | ---- | ---- |  ----------- | --- |
+| #000000 | blk | 0kep | 0old | 0act | 0mov         |  0  |
+| #FFAAFF | pnk | 1del | 1bis | 1end | 7del bis end |  7  |
+| #FFFFFF | wht | 1del | 2brr | 1end |11del brr end | 11  |
+| #FF0000 | red | 1del | 0old | 0act | 1del         |  1  |
+| #008800 | grn | 0kep | 1bis | 0act | 4    bis     |  4  |
+| #00FF00 | grs | 0kep | 2brr | 0act | 8    brr     |  8  |
+| #0000FF | blu | 0kep | 0old | 1end | 2        end |  2  |
+| #FF00FF | mgt | 1del | 0old | 1end | 3del     end |  3  |
+| #FFAA00 | ong | 1del | 1bis | 0act | 5del bis     |  5  |
+| #FFFF00 | ylw | 1del | 2brr | 0act | 9del brr     |  9  |
+| #00AAFF | sky | 0kep | 1bis | 1end | 6    bis end |  6  |
+| #00FFFF | cyn | 0kep | 2brr | 1end |10    brr end | 10  |
+"""
+
+
 def preproc_curves_data(HScurves, dopad = False, **kwargs):
 
     HScurves = pd.DataFrame(HScurves)
 
-    HScurves["stat"] = HScurves.IsNew * 1  + HScurves.filt*2 + (~HScurves.A) * 4 
+    B = HScurves.get("B",HScurves.get("IsNew"))
+    F = HScurves.get("F",HScurves.get("filt"))
+    E = ~HScurves.A
+
+    HScurves["stat"] =  F*1 + B*4 + E*2 
 
     if dopad:
         HScurves = minipad(HScurves,"SimStep", "I", "stat" )
@@ -171,31 +230,13 @@ def preproc_curves_data(HScurves, dopad = False, **kwargs):
 
     HScurves['StepMod10'] = sm10.astype(str)
 
-    cat_map = {
-    0: "0old",
-    1: "1new",
-    2: "2die",
-    3: "3new_die",
-    4: "4fin ",
-    5: "5new_fin",
-    6: "6die_fin",
-    7: "7new_die_fin"
-    }
+    mapping = from_md(ColorMappingMD)
+
+    cat_map   = mapping.desc.to_dict()
+    color_map = mapping.Hex.to_dict()
 
     HScurves["status"] = HScurves.stat.map(cat_map)
-
-    color_map = {
-    "0old": "#124FC0",
-    "1new": '#00CC96',
-    "2die": '#FF4B4B',
-    "3new_die": "#BF0BEC",
-    "4fin ": "#E69112",
-    "5new_fin": "#C7DB15",
-    "6die_fin":  "#7C880F",
-    "7new_die_fin": "#282C04"
-    }
-
-    HScurves["statCol"] = HScurves.status.map(color_map)
+    HScurves["statCol"] = HScurves.stat.map(color_map)
 
     HScurves['hovertext'] =  HScurves.apply( lambda r : "<br>".join([ f"I: {r.I}", f"St: {r.status}"]), axis=1)
 
@@ -204,9 +245,11 @@ def preproc_curves_data(HScurves, dopad = False, **kwargs):
 
 def preproc_intersections_data(HSintersections, **kwargs):
 
-    dfI = HSintersections.results()
     
-    dfI = pd.DataFrame(dfI)
+    dfI = pd.DataFrame(HSintersections)
+
+    dfI['hovertext'] =  dfI.apply( lambda r : "<br>".join([ f"i: {r.i}", f"j: {r.j}", f"cls: {r.clas}"]), axis=1)
+
 
     return dfI
 
@@ -230,7 +273,7 @@ def animate(curvesDF, hull_radius, color_map, **kwargs):
                         color="status", 
                         # animation_group="I",
                         range_x=[-Rub,Rub], range_y=[-Rub,Rub],
-                        hover_data=["I", "SimStep"],
+                        hover_data=["I", "SimStep", 'stat'],
                         animation_frame="SimStep", 
                         animation_group="I",
                         color_discrete_map=color_map,
@@ -275,6 +318,8 @@ def Web(curvesDF, hull_radius, **kwargs):
     #R upper bound
     Rub = np.ceil(hull_radius*1.01) 
 
+    lockscale = trypop(kwargs,"lockscale", False)
+
     
     grain = px.line(curvesDF, x="X", y="Y",
                         # color="stat", 
@@ -290,6 +335,8 @@ def Web(curvesDF, hull_radius, **kwargs):
                         )
     grain.update_layout(shapes=[casing(hull_radius)])
 
+    if lockscale:
+        grain.update_yaxes(scaleanchor="x", scaleratio=1)
     return grain
 
 

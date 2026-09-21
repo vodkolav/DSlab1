@@ -65,11 +65,15 @@ class Lagrangian:
 
         newI, newXY =  self.fill(self.I, self.XY, divergents )
 
+        self.B = np.zeros_like(self.I)
+
         XY = np.insert(self.XY, newI, newXY, axis=0)
         I = np.arange(XY.shape[0])
         self.I, self.XY = I, XY
 
-        self.IsNew = np.zeros_like(self.I)
+        iB = np.ones_like(newI)*2
+
+        self.B = np.insert(self.B, newI, iB)
         
         self.A = self.active(self.XY)
 
@@ -80,6 +84,8 @@ class Lagrangian:
     def dump_curves(self, fnlocals):
         pass
 
+    def dump_curves1(self, fnlocals):
+        pass
 
     def dump_intersections(self, fnlocals):
         pass
@@ -116,7 +122,9 @@ class Lagrangian:
             ti, tj, valid = intersections(c0, v0, c_block, v_block) 
             # valid = valid & (((l < ti) & (ti  < u)) | ((l < tj ) & (tj < u)))
 
+            # whether intersection is within bounds of segment i (belonging to XY point I)
             condi = (0 <= ti) & (ti <= 1)
+            # whether intersection is within bounds of segment j
             condj = (0 <= tj) & (tj <= 1)
 
             clas = valid*1 + condi*2 + condj*3
@@ -124,8 +132,8 @@ class Lagrangian:
             valid = valid & condi & condj
 
             P = c0 + np.stack((ti,ti), axis=1) * v0
-            Px = P[:,0] #TODO: harvester can break these up by himself
-            Py = P[:,1]
+            # Px = P[:,0] #TODO: harvester can break these up by himself
+            # Py = P[:,1]
 
             if any(condi & condj):
                 j_block = np.min(np.where(condi & condj))
@@ -252,61 +260,75 @@ class Lagrangian:
 
 
     def step(self, I, XY, A):
-
+# I
+# Advance all points in their Normal direction
         self.N = normals(XY)
 
         E = self.advance(XY, self.N, self.d, A)
         if not (XY.shape[0]  == self.N.shape[0] == I.shape[0]):
             raise ValueError('All inputs must have same length')
 
-
+# detect caustics
         self.S = segments(E)
 
-        filt, iI, iXY  = self.curve_intersections(E) # *(1+s*0.1)
-        # filt is True where the points should be filtered out / dropped
+        F, iI, iXY  = self.curve_intersections(E) # *(1+s*0.1)
+        # F (filter) is True where the points should be filtered out / dropped
+        # maybe make it Keep instead? 
 
         self.dump_curves(locals())
 
         # from this point on the old I, XY, A are obsolete
+        # e.g all is prev step
 
-        isNew1 = np.zeros_like(I)
+# I1
 
+# keep filter and "Born" label consistent with XY by inserting zeros 
+# (e.g do not filter) where new points are born
+        iF = np.zeros_like(iI).astype(bool)
+        F1 = np.insert(F, iI, iF, axis=0)
+
+        # B is for Born (isNew renamed to B)
+        B = np.zeros_like(I)
+        iB = np.ones_like(iI) # bis=1 ; born from intersections has value B=1
+        B = np.insert(B, iI, iB, axis=0)
+
+# Insert new points where caustic intersects itself 
         XY1 = np.insert(E, iI, iXY, axis=0)
 
-        iF = np.zeros_like(iI).astype(bool)
-        F1 = np.insert(filt, iI, iF, axis=0)
-        
-        news = np.ones_like(iI)
-        isNew1 = np.insert(isNew1, iI, news, axis=0)
-
-        if filt.size != 0: #TODO should check if filt has any True instead
+# Filter caustics points
+        if F1.size != 0: #TODO should check if filt has any True instead
             XY1 = XY1[~F1]
-            isNew1 = isNew1[~F1]
+            B = B[~F1]
 
         I1 = np.arange(XY1.shape[0])
 
+        self.dump_curves1(locals())
+
+# I2  
+# detect rarefactions
         self.S = segments(XY1)
 
         self.M = Magn(self.S)
 
         divergents = rarefactions(self.M, self.d)
 
-        newI, newXY =  self.fill(I1, XY1, divergents )
+# birth new points for filling the rarefactions
+        iI, iXY =  self.fill(I1, XY1, divergents )
 
-        news = np.ones_like(newI)
-
-        XY1 = np.insert(XY1, newI, newXY, axis=0)
-        I1 = np.arange(XY1.shape[0])
-
-        self.IsNew = np.insert(isNew1, newI, news, axis=0)
+        XY2 = np.insert(XY1, iI, iXY, axis=0)
+        I2 = np.arange(XY2.shape[0])
 
 
-        A1 = self.active(XY1)
+        iB = np.ones_like(iI)*2 # brr=2; born from rarefactions has value 2 in B
+        self.B = np.insert(B, iI, iB, axis=0)
+
+
+        A2 = self.active(XY2)
         dd = np.ones([2,1]) * self.d
-        dA1 = (dd * A1).T
-        C = circumference(XY1*dA1)
+        dA1 = (dd * A2).T
+        C = circumference(XY2*dA1)
 
-        return I1, XY1, A1, C
+        return I2, XY2, A2, C
 
 
     def step_summary(self, mode = "data"):
@@ -352,7 +374,9 @@ class Lagrangian:
             npoints = len(self.I)
             self.tele.ping("step:", self.SimStep, " | points:", npoints, " | circumference:", C)
 
-            self.I, self.XY, self.A, C = self.step(self.I, self.XY, self.A )
+            res = self.step(self.I, self.XY, self.A )
+
+            self.I, self.XY, self.A, C = res
 
             if sum(self.I.shape) >  self.n * 20 :
                 self.tele.error("too many points, stopping simulation")

@@ -43,10 +43,22 @@ tracks = {
     "harvest": {
         "curves": {
             "func_name": "dump_curves", 
-            "varnames": ["self.I", "self.XY", "self.A", "self.IsNew",
-                         "self.SimStep", "self.N", "E", "self.d", "filt"],
+            "varnames": ["self.I", "self.XY", "self.A", "self.B", "F",
+                         "self.SimStep", "self.N", "E", "self.d"],
             "on_size_mismatch": "error"}
-            }
+            ,
+        "curves1": {
+                "func_name": "dump_curves1", 
+                "varnames": ["I1", "XY1", "self.SimStep"],
+                "on_size_mismatch": "error"
+            },
+        "intersections": {
+                "func_name": "dump_intersections", 
+                "varnames": ["self.SimStep", 
+                             "i", "j", "ti", "tj", "P", 
+                             "clas", "condi", "condj"],
+                "elems": 'valid'}
+    }
 }
 
 
@@ -65,9 +77,10 @@ cases = [{"config":{
 
 bench = Bench(benchmarks_root=dataroot + "benchmarks",
               output_root= dataroot + "output",
-              folder="20260801/1442",
+            #   folder="20260801/1442",
               onerror = "fail")
 
+bench.np_orient = "horz"
 
 simppl = SimPipeline
 
@@ -76,7 +89,7 @@ simppl = SimPipeline
 
 bench.configure(simppl)
 
-bench.set_cases(cases) #[2:4]) 
+bench.set_cases(cases[2:3]) 
 # bench.unfurl_grid(case_template, chosengrid)
 
 bench.run_experiments()
