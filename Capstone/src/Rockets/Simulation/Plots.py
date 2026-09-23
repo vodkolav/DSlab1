@@ -35,6 +35,15 @@ def dots_and_arrows(dfC, color_map, dfI, **kwargs):
                                          symbol = 'x'),
                              mode='markers',
                              ))
+    
+    Seg = ff.create_quiver(x=dfC.X, y=dfC.Y, u=dfC.Sx, v=dfC.Sy, 
+                        #    line=dict(color='red'), 
+                            marker=dict(color='red'), 
+                            name='segments',
+                            hoverinfo = 'text',
+                            text=dfC.hovertext, 
+                            scale=.99, arrow_scale=.09)
+    fig.add_traces(Seg)
 
     fig.add_trace(go.Scatter(x=dfC.X, y=dfC.Y,
                              name='XY',
@@ -118,7 +127,7 @@ def minipad(df, index = "SimStep", col = 'I', value = "stat"):
     pld = pd.DataFrame(pld, columns=[ index, col, value])
 
     paddf = pd.concat([df,pld], axis=0)
-    paddf = paddf.sort_values(by=["SimStep", "I","stat"]).reset_index(drop=True)
+    paddf = paddf.sort_values(by=[index, col, value]).reset_index(drop=True)
     return paddf
 
 
@@ -224,11 +233,14 @@ def preproc_curves_data(HScurves, dopad = False, **kwargs):
     HScurves["stat"] =  F*1 + B*4 + E*2 
 
     if dopad:
-        HScurves = minipad(HScurves,"SimStep", "I", "stat" )
+        HScurves = minipad(HScurves, index = "SimStep", col = "I", value="stat" )
+        HScurves = minipad(HScurves, col = "SimStep", index = "I", value = "stat" )
 
     sm10 = (HScurves['SimStep']%10)
 
     HScurves['StepMod10'] = sm10.astype(str)
+    
+    HScurves['Imod10'] = (HScurves['I']%10).astype(str)
 
     mapping = from_md(ColorMappingMD)
 
@@ -239,6 +251,10 @@ def preproc_curves_data(HScurves, dopad = False, **kwargs):
     HScurves["statCol"] = HScurves.stat.map(color_map)
 
     HScurves['hovertext'] =  HScurves.apply( lambda r : "<br>".join([ f"I: {r.I}", f"St: {r.status}"]), axis=1)
+
+    stat2colr = mapping[["desc", "Hex"]]
+    stat2colr.set_index('desc', inplace = True)
+    color_map = stat2colr.to_dict()['Hex']
 
     return HScurves, color_map
 
@@ -287,7 +303,7 @@ def animate(curvesDF, hull_radius, color_map, **kwargs):
                         # render_mode="SVG"
                         )
 
-    fig.update_layout(shapes = [casing(hull_radius)])
+    fig.update_layout(shapes = [casing(hull_radius)], template='ggplot2')
     fig.update_traces(marker=dict(size=4))
 
     if lockscale:
@@ -313,7 +329,7 @@ def casing(R):
     return shape
 
 
-def Web(curvesDF, hull_radius, **kwargs):
+def Web(curvesDF, hull_radius, color='StepMod10', **kwargs):
 
     #R upper bound
     Rub = np.ceil(hull_radius*1.01) 
@@ -325,7 +341,7 @@ def Web(curvesDF, hull_radius, **kwargs):
                         # color="stat", 
                         range_x=[-Rub,Rub], range_y=[-Rub,Rub],
                         hover_data=["I", "SimStep"],
-                        color='StepMod10',
+                        color=color,
                         # direction= "counterclockwise", start_angle=0,
                         #color_discrete_sequence=px.colors.sequential.Plasma_r, 
                         #template="plotly_dark",)
@@ -334,7 +350,7 @@ def Web(curvesDF, hull_radius, **kwargs):
                         **kwargs
                         )
     grain.update_layout(shapes=[casing(hull_radius)])
-
+    grain.update_traces(marker=dict(size=4))
     if lockscale:
         grain.update_yaxes(scaleanchor="x", scaleratio=1)
     return grain

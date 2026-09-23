@@ -147,7 +147,7 @@ class Lagrangian:
 
             self.dump_intersections(locals())
 
-        return filt, (newI % n).astype(int), newXY
+        return filt, ((newI+1) % n).astype(int), newXY
 
 
     def interpolate(self, XY1, i, s, p, method):
@@ -239,7 +239,7 @@ class Lagrangian:
 
                 newI = np.concatenate((newI, onns*(i)), axis=0)
 
-            newI = newI.astype(int)
+            newI = newI.astype(int)+1
             # newI, newXY
 
         return newI, newXY

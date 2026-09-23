@@ -86,7 +86,7 @@ def normals(XY):
 
 
 def segments(XY):
-    Ends = np.concatenate((XY[-1:,:],XY[:-1,:]), axis=0) # segment end points 
+    Ends = np.concatenate((XY[1:,:],XY[:1,:]), axis=0) # segment end points 
     return Ends - XY # segment direction vectors
 
 
