@@ -138,7 +138,7 @@ class Lagrangian:
             if any(condi & condj):
                 j_block = np.min(np.where(condi & condj))
                 j = i + 2 + j_block
-                sl = cslice(i,j,n)
+                sl = cslice(i+1,j+1,n)
                 filt[sl] = True
 
 

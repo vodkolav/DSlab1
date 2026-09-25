@@ -80,7 +80,8 @@ class SimPipeline(Pipeline):
 
         add_plot(MP, Web(curvesdf, hull_radius=  config["simulation"]["hull_radius"]), row=1, col=1)
 
-        add_plot(MP, Perf(simdf), row=1, col=2)
+        maxsteps = config["simulation"]["steps"]
+        add_plot(MP, Perf(simdf, range_x = [-1,maxsteps+1]), row=1, col=2)
 
         save_fig(MP,save_path= case_file + ".html")
 
