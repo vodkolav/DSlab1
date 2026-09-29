@@ -12,6 +12,7 @@ from Rockets.utils import parse_sf_params
 from Rockets.Simulation.Plots import preproc_log_data, Log, save_fig
 
 from Benchmarking.Benchmarking import Bench
+from Benchmarking.utils import JQ
 
 print(os.getcwd())
 
@@ -89,7 +90,14 @@ simppl = SimPipeline
 
 bench.configure(simppl)
 
-bench.set_cases(cases[2:3]) 
+# shortcut to run just a specific case
+# cid = "funcname=risingsun_m=10_a=1_b=1_n_1=5."
+# filter_query = f"""
+# map(select(.config.file.stem | startswith("{cid}")))
+# """
+# res = JQ(cases, filter_query)
+
+bench.set_cases(cases) # res) 
 # bench.unfurl_grid(case_template, chosengrid)
 
 bench.run_experiments()

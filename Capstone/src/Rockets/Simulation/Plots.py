@@ -6,6 +6,7 @@ from plotly.subplots import make_subplots
 import plotly.express as px
 from Rockets.Geometry import pol2cart, cart2pol
 from Rockets.utils import trypop, ia
+from Benchmarking.Case import  Case
 
 import json
 import ipywidgets as widgets
@@ -36,14 +37,14 @@ def dots_and_arrows(dfC, color_map, dfI, **kwargs):
                              mode='markers',
                              ))
     
-    Seg = ff.create_quiver(x=dfC.X, y=dfC.Y, u=dfC.Sx, v=dfC.Sy, 
-                        #    line=dict(color='red'), 
-                            marker=dict(color='red'), 
-                            name='segments',
-                            hoverinfo = 'text',
-                            text=dfC.hovertext, 
-                            scale=.99, arrow_scale=.09)
-    fig.add_traces(Seg)
+    # Seg = ff.create_quiver(x=dfC.X, y=dfC.Y, u=dfC.Sx, v=dfC.Sy, 
+    #                     #    line=dict(color='red'), 
+    #                         marker=dict(color='red'), 
+    #                         name='segments',
+    #                         hoverinfo = 'text',
+    #                         text=dfC.hovertext, 
+    #                         scale=.99, arrow_scale=.09)
+    # fig.add_traces(Seg)
 
     fig.add_trace(go.Scatter(x=dfC.X, y=dfC.Y,
                              name='XY',
@@ -226,7 +227,7 @@ def preproc_curves_data(HScurves, dopad = False, **kwargs):
 
     HScurves = pd.DataFrame(HScurves)
 
-    B = HScurves.get("B",HScurves.get("IsNew"))
+    B = HScurves.get("B",HScurves.get("IsNew")) # backward compatibility fallback for B's old name
     F = HScurves.get("F",HScurves.get("filt"))
     E = ~HScurves.A
 
@@ -270,6 +271,61 @@ def preproc_intersections_data(HSintersections, **kwargs):
     return dfI
 
 
+class preproc():
+
+    @staticmethod
+    def curves(cAse: Case, dopad=True, *args, **kwargs):
+        curves_dict = cAse.get_path('tracks.harvest.curves.data')
+        curvesdf, color_map = preproc_curves_data(curves_dict, dopad = dopad, *args, **kwargs)
+        curvesdf["case_id"] = cAse.get_path("ID.case_id")
+        curvesdf["case_index"] = cAse.get_path("ID.case_index")
+        return curvesdf, color_map
+
+
+    @staticmethod
+    def sim(cAse: Case, *args, **kwargs):
+        sim_dict = cAse.get_path('tracks.episodes.data')
+        simdf = preproc_sim_data(sim_dict, *args, **kwargs)
+        simdf["case_id"] = cAse.get_path("ID.case_id")
+        return simdf
+
+
+    @staticmethod
+    def intersections(cAse: Case, *args, **kwargs):
+        intersections_dict = cAse.get_path('tracks.harvest.intersections.data')
+        intersectionsdf = preproc_intersections_data(intersections_dict, *args, **kwargs)
+        intersectionsdf["case_id"] = cAse.get_path("ID.case_id")
+        return intersectionsdf
+
+
+    @staticmethod
+    def log(cAse: Case, *args, **kwargs):
+        # data_dict = cAse.get_path('tracks.log.data')
+        data_dict = cAse.TrackWithID("log")
+        datadf, color_map = preproc_log_data(data_dict, *args, **kwargs)
+        # datadf["case_id"] = cAse.get_path("ID.case_id")
+        return datadf, color_map
+
+
+def inject_config(fig, plotconfig):
+
+    from types import MethodType
+
+    def _ipython_display_(self):
+        """
+        Handle rich display of figures in ipython contexts
+        """
+        import plotly.io as pio
+
+        if pio.renderers.render_on_display and pio.renderers.default:
+            pio.show(self, config = plotconfig)
+        else:
+            print(repr(self))
+
+    fig._ipython_display_ = MethodType(_ipython_display_, fig)
+
+
+
 def animate(curvesDF, hull_radius, color_map, **kwargs):
 
     # curvesDF, curve_colors = preproc_curves_data(tracks['log']['data'], dopad = True)
@@ -285,6 +341,8 @@ def animate(curvesDF, hull_radius, color_map, **kwargs):
 
     lockscale = trypop(kwargs,"lockscale", False)
 
+    title = "Case " + str(curvesDF.case_index[0]) + ": " +  str(curvesDF.case_id[0])
+
     fig = px.scatter(curvesDF, x="X", y="Y",
                         color="status", 
                         # animation_group="I",
@@ -293,7 +351,7 @@ def animate(curvesDF, hull_radius, color_map, **kwargs):
                         animation_frame="SimStep", 
                         animation_group="I",
                         color_discrete_map=color_map,
-                        #name = "Front",
+                        title = title,
                         # direction= "counterclockwise", start_angle=0,
                         #color_discrete_sequence=px.colors.sequential.Plasma_r, 
                         #template="plotly_dark",)
@@ -308,6 +366,17 @@ def animate(curvesDF, hull_radius, color_map, **kwargs):
 
     if lockscale:
         fig.update_yaxes(scaleanchor="x", scaleratio=1)
+
+    plotconfig = {
+    # "download plot" button - downloads the png with case_id as name  
+    'toImageButtonOptions': {
+        'format': 'png', # one of png, svg, jpeg, webp
+        'filename': curvesDF['case_id'][0],
+        'scale': 1 # Multiply title/legend/axis/canvas sizes by this factor
+        }
+    }
+
+    inject_config(fig, plotconfig)
     return fig
 
 
@@ -400,10 +469,92 @@ def multiplot(rows=1, cols=2, width=600, height=600):
     return fig
 
 
-def save_fig(fig, save_path = None):
+post_script = r"""
+const graph = document.getElementById('{plot_id}');
+const copyToast = document.createElement("div");
+copyToast.textContent = "Copied to clipboard";
+Object.assign(copyToast.style, {
+    position: "fixed",
+    right: "20px",
+    bottom: "20px",
+    padding: "8px 12px",
+    color: "white",
+    background: "#333",
+    borderRadius: "4px",
+    font: "14px sans-serif",
+    opacity: "0",
+    transition: "opacity 150ms",
+    pointerEvents: "none",
+    zIndex: "9999"
+});
+document.body.appendChild(copyToast);
+let copyToastTimer;
+
+function showCopyToast() {
+    copyToast.style.opacity = "1";
+    clearTimeout(copyToastTimer);
+    copyToastTimer = setTimeout(() => copyToast.style.opacity = "0", 1600);
+}
+
+function valueFor(token, point) {
+    const customMatch = token.match(/^customdata\[(\d+)\]$/);
+    if (customMatch) {
+        return (point.customdata || [])[Number(customMatch[1])];
+    }
+
+    // Handles x, y, z, and simple point properties.
+    return token.split(".").reduce((value, key) => value?.[key], point);
+}
+
+graph.on("plotly_click", async (event) => {
+    const point = event.points[0];
+    const template = point.fullData?.hovertemplate
+        || point.data?.hovertemplate
+        || "";
+
+    const jsonData = {};
+
+    template
+        .replace(/<extra>[\s\S]*?<\/extra>/gi, "")
+        .split(/<br\s*\/?>/i)
+        .forEach((line) => {
+            const cleanLine = line.replace(/<[^>]*>/g, "").trim();
+            const separator = cleanLine.indexOf("=");
+            if (separator < 0) return;
+
+            const label = cleanLine.slice(0, separator).trim();
+            const expression = cleanLine.slice(separator + 1).trim();
+            const tokenMatch = expression.match(/^%\{([^}:|]+)(?:[:|][^}]*)?\}$/);
+
+            jsonData[label] = tokenMatch
+                ? valueFor(tokenMatch[1], point)
+                : expression;
+        });
+
+    const text = JSON.stringify(jsonData, null, 2);
+
+    try {
+        await navigator.clipboard.writeText(text);
+        showCopyToast();
+        console.info("Copied point JSON:", text);
+    } catch (error) {
+        console.error("Clipboard copy failed:", error, text);
+        alert("Could not access the clipboard. Point JSON was logged in the browser console.");
+    }
+});
+"""
+
+def save_fig(fig, save_path = None, copyable_points=True):
+
+    kw = {
+        "full_html": True,
+        "include_plotlyjs": True,
+        "post_script": post_script
+        } if copyable_points else {}
+
     if save_path is not None:
         
-        fig.write_html(save_path, auto_play = False )
+        fig.write_html(save_path, auto_play = False, **kw )
 
     else:
         fig.show()

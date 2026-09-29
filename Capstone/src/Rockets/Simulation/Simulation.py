@@ -104,8 +104,12 @@ class Lagrangian:
         newXY = np.zeros((0,2))
         newI = np.zeros(0)
 
+        # TODO: use numpy sliding window?
+        # https://medium.com/@whyamit404/understanding-sliding-window-in-numpy-50c86cac822b
 
-        for i in range(0, n , 1):
+        i = 0 
+
+        while i < n :
             j = 0 
             c0 = XY[i]            # segment origin
             v0 = self.S[i]        # segment direction
@@ -136,15 +140,19 @@ class Lagrangian:
             # Py = P[:,1]
 
             if any(condi & condj):
-                j_block = np.min(np.where(condi & condj))
+                j_block = np.max(np.where(condi & condj))
                 j = i + 2 + j_block
                 sl = cslice(i+1,j+1,n)
                 filt[sl] = True
 
 
-                newXY = np.concatenate((newXY, P[j_block:j_block+1,:]), axis=0)
+                newXY = np.concatenate((newXY, P[j_block:j_block+1,:]), axis=0) 
                 newI = np.concatenate((newI, [j]), axis=0)
-
+                i = j+1 # skip checking all the points between i and j
+                # once the outermost caustic is found, we don't need 
+                # to check all the inner ones - they are deleted in any case
+            else:
+                i+=1
             self.dump_intersections(locals())
 
         return filt, ((newI+1) % n).astype(int), newXY
