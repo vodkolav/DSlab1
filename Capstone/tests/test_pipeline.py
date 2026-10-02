@@ -57,8 +57,8 @@ tracks = {
                 "func_name": "dump_intersections", 
                 "varnames": ["self.SimStep", 
                              "i", "j", "ti", "tj", "P", 
-                             "clas", "condi", "condj"],
-                "elems": 'valid'}
+                             "valid", "condi", "condj"],
+                "elems": 'pois'}
     }
 }
 
@@ -91,11 +91,11 @@ simppl = SimPipeline
 bench.configure(simppl)
 
 # shortcut to run just a specific case
-# cid = "funcname=risingsun_m=10_a=1_b=1_n_1=5."
+# cid = "funcname=superformula m=3 a=2 b=1 n_1=1 n_2=1 "
 # filter_query = f"""
 # map(select(.config.file.stem | startswith("{cid}")))
 # """
-# res = JQ(cases, filter_query)
+# cases = JQ(cases, filter_query)
 
 bench.set_cases(cases) # res) 
 # bench.unfurl_grid(case_template, chosengrid)

@@ -122,22 +122,19 @@ class Lagrangian:
             # Adjacent segments by definition intersect at their shared vertex, which is not a valid intersection for our purposes. 
             # By shifting by 2, we ensure that we are only checking for intersections between non-adjacent segments.
 
-
+            
             ti, tj, valid = intersections(c0, v0, c_block, v_block) 
             # valid = valid & (((l < ti) & (ti  < u)) | ((l < tj ) & (tj < u)))
+
 
             # whether intersection is within bounds of segment i (belonging to XY point I)
             condi = (0 <= ti) & (ti <= 1)
             # whether intersection is within bounds of segment j
             condj = (0 <= tj) & (tj <= 1)
 
-            clas = valid*1 + condi*2 + condj*3
-
-            valid = valid & condi & condj
+            pois = ~valid | (condi & condj) # points of interest
 
             P = c0 + np.stack((ti,ti), axis=1) * v0
-            # Px = P[:,0] #TODO: harvester can break these up by himself
-            # Py = P[:,1]
 
             if any(condi & condj):
                 j_block = np.max(np.where(condi & condj))
@@ -145,6 +142,7 @@ class Lagrangian:
                 sl = cslice(i+1,j+1,n)
                 filt[sl] = True
 
+                self.dump_intersections(locals())
 
                 newXY = np.concatenate((newXY, P[j_block:j_block+1,:]), axis=0) 
                 newI = np.concatenate((newI, [j]), axis=0)
@@ -153,7 +151,6 @@ class Lagrangian:
                 # to check all the inner ones - they are deleted in any case
             else:
                 i+=1
-            self.dump_intersections(locals())
 
         return filt, ((newI+1) % n).astype(int), newXY
 
@@ -332,9 +329,10 @@ class Lagrangian:
 
 
         A2 = self.active(XY2)
-        dd = np.ones([2,1]) * self.d
-        dA1 = (dd * A2).T
-        C = circumference(XY2*dA1)
+        self.S = segments(XY2)
+        self.M = Magn(self.S)
+
+        C = np.sum(self.M*A2)
 
         return I2, XY2, A2, C
 
@@ -347,7 +345,7 @@ class Lagrangian:
 
 
     def grain(self, func, n):
-        T = np.linspace(0, np.pi*2, n, endpoint=False) - 0.0001
+        T = np.linspace(0, np.pi*2, n, endpoint=False) + 0.0001
         # T = np.append(T, T[:1])
         I = np.arange(len(T))
         # Calculate Radius for each Theta

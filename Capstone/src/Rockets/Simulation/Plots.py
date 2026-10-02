@@ -188,6 +188,7 @@ def preproc_sim_data(HSsim):
     dfSim = pd.DataFrame(HSsim).dropna()
     dfSim.SimStep = dfSim.SimStep.apply(lambda x: x[0])
     dfSim.C = dfSim.C.apply(lambda x: x[0])
+    dfSim.npoints = dfSim.npoints.apply(lambda x: x[0])
     return dfSim
 
 
@@ -265,7 +266,11 @@ def preproc_intersections_data(HSintersections, **kwargs):
     
     dfI = pd.DataFrame(HSintersections)
 
-    dfI['hovertext'] =  dfI.apply( lambda r : "<br>".join([ f"i: {r.i}", f"j: {r.j}", f"cls: {r.clas}"]), axis=1)
+
+    if 'clas' not in dfI.columns:
+        dfI['clas'] = ~dfI.valid*1 + dfI.condi*2 + dfI.condj * 4
+
+    dfI['hovertext'] = dfI.apply( lambda r : "<br>".join([ f"i: {r.i}", f"j: {r.j}", f"cls: {r.clas}"]), axis=1)
 
 
     return dfI
