@@ -1,5 +1,5 @@
 
-from Rockets.Simulation.Plots import preproc_curves_data, preproc_sim_data
+from Rockets.Simulation.Plots import preproc #_curves_data, preproc_sim_data
 from Rockets.Simulation.Plots import Web, Perf, multiplot ,save_fig, add_plot
 from Rockets.Simulation.Simulation import Lagrangian
 from Rockets.Superformula.Formulas import formula1, formula2
@@ -68,15 +68,14 @@ class SimPipeline(Pipeline):
         # runs after each case is completed, and after telemetry has collected all data for the case.
         # can be used to generate plots, summaries, etc. based on the collected telemetry data.
 
-        tracks = self.tele.CAse.tracks
         config = self.tele.CAse.config
 
-        simdf = preproc_sim_data(tracks['episodes']['data'])
-        curvesdf, colmap =  preproc_curves_data(tracks['harvest']['curves']['data'])
+        simdf = preproc.sim(self.tele.CAse)
+        curvesdf, colmap =  preproc.curves(self.tele.CAse)
         case_file = self.tele.CAse.case_filename(field='case_signature')
 
-
-        MP = multiplot(1,2)
+        titles = ('Web burned', 'Performance (Steps vs. Circumference and npoints)' )
+        MP = multiplot(1,2, titles=titles)
 
         add_plot(MP, Web(curvesdf, hull_radius=  config["simulation"]["hull_radius"]), row=1, col=1)
 

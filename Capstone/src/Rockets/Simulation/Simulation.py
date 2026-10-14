@@ -2,7 +2,7 @@
 import numpy as np
 from Rockets.Geometry import circumference, normals, Magn, cslice, pol2cart,\
                             cart2pol, intersections, slerp, rarefactions, segments,\
-                            interp, interp_parametric
+                            interp, interp_parametric, bimodal_means
 from Benchmarking.sensors.Harvester import Harvester
 
 from Benchmarking.telemetry_manager import DummyTelemetryManager
@@ -11,14 +11,14 @@ from Benchmarking.telemetry_manager import DummyTelemetryManager
 
 class Lagrangian:
 
-    def __init__(self, func,  hull_radius = 4, n = 1000, d = 0.11, window_size=50, interp_method = 'manydumb', **kwargs ):
+    def __init__(self, func,  hull_radius = 4, n = 1000, d = None, window_size=50, interp_method = 'manydumb', **kwargs ):
         """Simulate SRM burnback
 
         Args:
             func (def): function defining the curve. must be of form Radius = f(Theta)
             hull_radius (int, optional): _description_. Defaults to 4.
             n (int, optional): simulation points. Defaults to 1000.
-            d (float, optional): step size. Defaults to .11.
+            d (float, optional): step size. Defaults to None (automatic).
             window_size (int, optional): window size for intersections detection. Defaults to 50.
             interp_method (str, optional): interpolation method for filling of rearefactions. Defaults to 'manydumb'.
 
@@ -33,7 +33,6 @@ class Lagrangian:
             raise ValueError('window_size must be >= 2')
         self.window_size = window_size
 
-        self.d = d
 
         avail_methods = ['dumb', 'manydumb', 'interp', 'interp_parametric', 'slerp']
         if interp_method not in avail_methods:
@@ -61,6 +60,8 @@ class Lagrangian:
 
         self.M = Magn(self.S)
 
+        self.d = d if bool(d) else bimodal_means(self.M).min()
+
         divergents = rarefactions(self.M, self.d)
 
         newI, newXY =  self.fill(self.I, self.XY, divergents )
@@ -70,6 +71,11 @@ class Lagrangian:
         XY = np.insert(self.XY, newI, newXY, axis=0)
         I = np.arange(XY.shape[0])
         self.I, self.XY = I, XY
+
+        self.S = segments(self.XY)
+        self.M = Magn(self.S)
+        self.d = d if bool(d) else bimodal_means(self.M).max()
+
 
         iB = np.ones_like(newI)*2
 

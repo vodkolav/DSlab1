@@ -1,6 +1,7 @@
 import numpy as np
 
 from scipy.interpolate import RBFInterpolator , CubicSpline
+from sklearn.mixture import GaussianMixture
 
 NPERRSTATE = 'warn' # 'ignore' # 'warn' # 'raise' # 'log' # 'print' # 'call'
 
@@ -88,6 +89,17 @@ def normals(XY):
 def segments(XY):
     Ends = np.concatenate((XY[1:,:],XY[:1,:]), axis=0) # segment end points 
     return Ends - XY # segment direction vectors
+
+
+def bimodal_means(M):
+    """
+    Fit a bimodal Gaussian mixture to the data and return the means of the two components.
+    """
+    X = M[~np.isnan(M)].reshape(-1, 1)
+    
+    gm = GaussianMixture(n_components=2, random_state=0)
+    gm.fit(X)
+    return gm.means_
 
 
 def intersections(c0, v0, c_block, v_block):

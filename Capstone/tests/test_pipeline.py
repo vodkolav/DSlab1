@@ -17,10 +17,10 @@ from Benchmarking.utils import JQ
 print(os.getcwd())
 
 simParams = {
-"d": .05,
-"steps": 70,
-"n": 1000,
-"window_size": 70,
+# "d": .05,
+"steps": 200,
+"n": 800,
+"window_size": 100, 
 "hull_radius": 4,
 "interp":  "interp_parametric" #'manydumb'
 }

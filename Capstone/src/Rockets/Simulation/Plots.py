@@ -284,6 +284,7 @@ class preproc():
         curvesdf, color_map = preproc_curves_data(curves_dict, dopad = dopad, *args, **kwargs)
         curvesdf["case_id"] = cAse.get_path("ID.case_id")
         curvesdf["case_index"] = cAse.get_path("ID.case_index")
+        curvesdf.sort_values(["SimStep","I","A"],inplace= True)
         return curvesdf, color_map
 
 
@@ -432,8 +433,22 @@ def Web(curvesDF, hull_radius, color='StepMod10', **kwargs):
 
 def Perf(simDF , **kwargs):
 
-    perf = px.line(simDF, x = 'SimStep', y = 'C', **kwargs)
-    return perf
+    circ = px.line(simDF, x = 'SimStep', y = 'C', 
+                   color_discrete_sequence=['red'], **kwargs)
+    circ.update_traces(name = 'circumference', line=dict(width=2))
+
+    circ.update_yaxes(title='circumference', 
+                      tickfont=dict(color='red'))
+
+    pnts = px.line(simDF, x = 'SimStep', y = 'npoints',
+                   color_discrete_sequence=['blue'], **kwargs)
+    pnts.update_traces(name = 'npoints', line=dict(width=2))
+
+    pnts.update_yaxes(title='npoints', 
+                    tickfont=dict(color='blue'))
+    
+    return circ, pnts
+    # return secondary_y(circ, pnts, 'Performance')
 
 
 def Log(dflog, colmap, **kwargs):
@@ -442,7 +457,7 @@ def Log(dflog, colmap, **kwargs):
 
         hover_data = ['case_signature', 'case_index'] + ia(more)
 
-        fig = px.scatter(dflog, x = 'time', y = 'y', color = 'type', #title = "Log data",
+        fig = px.scatter(dflog, x = 'dt', y = 'y', color = 'type', #title = "Log data",
                         hover_data = hover_data, 
                         custom_data= [list(dflog.index)],
                         # labels = {'value': 'Value', 'time': 'Time (s)', 'type': 'Type'},
@@ -456,21 +471,52 @@ def Log(dflog, colmap, **kwargs):
         return fig
 
 
-def multiplot(rows=1, cols=2, width=600, height=600):
+def multiplot(rows=1, cols=2, width=600, height=600, titles = None, **kwargs):
     
     width = width * cols
     height = height * rows
     
     fig = make_subplots( rows, cols, horizontal_spacing=0.1, vertical_spacing=0.1,
-                        subplot_titles=('Web burned', 'Performance (Steps vs. Circumference)' ))
+                        subplot_titles=titles, **kwargs)
 
     # fig.update_layout(yaxis_range = [-Rmax, Rmax], xaxis_range = [-Rmax, Rmax], **self.conf("layout"))
     
     # 5) Optional layout tweaks
     fig.update_layout(width=width, height=height) #, margin=dict(l=10, r=10, t=10, b=10))
-    fig.update_yaxes(scaleanchor="x", scaleratio=1, row=1, col=1)
-
+    # fig.update_yaxes(scaleanchor="x", scaleratio=1, row=1, col=1)
     fig.update_traces(marker=dict(size=1))
+    return fig
+
+
+def secondary_y(fig1, fig2, title = 'legend'):
+    # place 2 figures on the same plot with secondary y-axis
+
+    title1 = fig1.layout.yaxis.title.text 
+    title2 = fig2.layout.yaxis.title.text 
+    titlex = fig1.layout.xaxis.title.text 
+    fig = make_subplots(specs=[[{"secondary_y": True}]], )
+
+    for t in fig1.select_traces():
+        t.name = title1    # important  
+        t.legendgroup = title1
+        t.showlegend = True
+        fig.add_trace(t, secondary_y = False)
+
+    # add traces from plotly express figure to first figure
+    for t in fig2.select_traces():
+        t.name = title2    # important
+        t.legendgroup = title2
+        t.showlegend = True
+        fig.add_trace(t, secondary_y = True)
+        
+    # fix layout
+    fig = fig.update_layout(title = title, 
+                      showlegend=True,
+                      xaxis=dict(title=titlex),  
+                      yaxis=dict(title=title1),  
+                      yaxis2=dict(title=title2, overlaying='y', side='right'),  
+                     )
+
     return fig
 
 
@@ -565,13 +611,23 @@ def save_fig(fig, save_path = None, copyable_points=True):
         fig.show()
 
 
-def add_plot(multiplt, plot, row, col):
-    for trace in plot.data:
-        multiplt.add_trace(trace, row=row, col=col)
+def add_plot(multiplt: go.Figure, plot: go.Figure, row, col, secondary_y=False):
+
+    xaxis = plot.layout.xaxis
+    yaxis = plot.layout.yaxis
+
+    for trace in plot.select_traces():
+        # trace.name = titley    # important  
+        trace.legendgroup = yaxis.title.text 
+        trace.showlegend = True
+        multiplt.add_trace(trace, row=row, col=col, secondary_y=secondary_y)
 
     for f in plot.select_shapes():
         multiplt.add_shape(f, row=row, col=col)
     
+    # multiplt.update_xaxes(**xaxis._props, row=row, col=col)
+    multiplt.update_yaxes(patch=yaxis._props, row=row, col=col, secondary_y=secondary_y, )
+
     return multiplt
 
 
