@@ -3,6 +3,7 @@ import numpy as np
 from Rockets.Geometry import circumference, normals, Magn, cslice, pol2cart,\
                             cart2pol, intersections, slerp, rarefactions, segments,\
                             interp, interp_parametric, bimodal_means
+from Rockets.Equations import EquationsManager
 from Benchmarking.sensors.Harvester import Harvester
 
 from Benchmarking.telemetry_manager import DummyTelemetryManager
@@ -83,7 +84,7 @@ class Lagrangian:
         
         self.A = self.active(self.XY)
 
-        self.HSsim = Harvester(["self.SimStep", "C", "npoints"])
+        self.HSsim = Harvester(["self.SimStep", "C", "npoints", "self.d"])
 
 
 
@@ -402,3 +403,23 @@ class Lagrangian:
         #TODO return the performance curve. think more on representation
         return self.HSsim.results()
 
+
+class Physics(EquationsManager):
+
+    def __init__(self, canvas, overrides: dict):
+        super().__init__(canvas)
+        self.inputs = [r"J_{s}", r"Delta_{r}"]
+        self.outputs = [r"F", r"Delta_{t}"]
+
+        self.overrides(overrides)
+
+        self.make_replacements()
+
+        self.expressions = [self.substitute(self.expression(E)) for E in self.outputs]
+
+
+    def calculate(self, input: dict):
+
+        # input = {k:self.expression(v) for k,v in input.items()}
+        result = [E.evalf(subs=input) for E in self.expressions]
+        return result

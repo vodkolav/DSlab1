@@ -30,6 +30,9 @@ dependencies = [
     "narwhals==2.21.2",
     "nest-asyncio==1.6.0",
     "numpy==2.4.5",
+    "sympy"
+    "antlr4-python3-runtime==4.11"
+    "lark
     "pandas",
     "duckdb",
     "orjson>=3.11.9",

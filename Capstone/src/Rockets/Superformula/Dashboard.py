@@ -65,7 +65,9 @@ class DashboardManager:
         R = formula(T)
         Rmax = np.max(R) # makes plot ranges invariant to rotations
         X, Y = pol2cart(R, T)
-        fig = make_subplots(subplot_titles=('Y vs X', 'R vs T' ), **self.conf("subplots"))
+        fig = make_subplots(subplot_titles=('Y vs X', 'R vs T' ),
+                            horizontal_spacing=0.1, vertical_spacing=0.1,
+                              **self.conf("subplots"))
 
         fig.add_trace(go.Scatter(x=X, y=Y, mode=mode, name='X(T), Y(T)'), row=1, col=1)
         fig.add_trace(go.Scatter(x=T, y=R, mode=mode, name='R(T)'), **self.conf("trace2"))
