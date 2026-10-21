@@ -21,9 +21,24 @@ simParams = {
 "steps": 200,
 "n": 800,
 "window_size": 100, 
-"hull_radius": 4,
 "interp":  "interp_parametric" #'manydumb'
 }
+
+PhysicsParams = {
+    'L': 20,
+    'R': 4,
+    'd_{t}': 0.05,
+    'd_{e}': 0.1505,
+    'a': 1.24e-5,
+    'n': 0.4,
+    'rho_{p}': 1600,
+    'C_{v}': 1500,
+    'C_{FO}': 1.6,
+    'gamma': 1.2,
+    'P_{a}': 101325,
+    'R_{P}': 1/70,
+}
+
 
 dataroot = "/home/michael/Studies/DSlab/Capstone/data/"
 
@@ -76,7 +91,8 @@ cases = [{"config":{
                    "name": p.name, 
                    "stem": p.stem}, 
               "SFparams": parse_sf_params(p.stem),
-              "simulation": simParams,},
+              "simulation": simParams,
+              "Physics": PhysicsParams},
           "ID": 
               {"case_signature": p.stem},
           "tracks": deepcopy(tracks)
@@ -90,12 +106,11 @@ bench = Bench(benchmarks_root=dataroot + "benchmarks",
 
 bench.np_orient = "horz"
 
-simppl = SimPipeline
 
 #case_template = simppl.case_template()
 #case_template["tracks"].pop('profile')
 
-bench.configure(simppl)
+bench.configure(SimPipeline)
 
 # shortcut to run just a specific case
 # cid = "funcname=superformula m=3 a=2 b=1 n_1=1 n_2=1 "

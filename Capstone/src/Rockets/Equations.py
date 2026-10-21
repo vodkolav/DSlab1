@@ -1,6 +1,7 @@
 from Benchmarking.utils import read_json
 from sympy.parsing.latex import parse_latex
-from sympy import pi, Float
+from sympy import pi, Float, lambdify
+
 import pandas as pd
 import io
 import re
@@ -98,3 +99,11 @@ class EquationsManager:
             expression = expression.rhs if expression.is_Equality else expression
         return expression.simplify()
 
+
+    def lambdify(self, expression):
+
+        vars = list(expression.free_symbols)
+
+        l_func = lambdify(vars, expression, modules='numpy')
+
+        return l_func

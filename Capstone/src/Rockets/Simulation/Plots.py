@@ -471,6 +471,50 @@ def PerPh(simDF, **kwargs):
     return Thrust, delta_t
 
 
+def WebAndPerf(CAse):
+
+    config = CAse.config
+
+    simdf = preproc.sim(CAse)
+    curvesdf, colmap =  preproc.curves(CAse)
+
+    subplots_config = {
+        "rows": 2, 
+        "cols": 2,
+        "column_widths": [1,1],
+        "row_heights": [1,1],
+        # "width": 1200,
+        "subplot_titles": [
+            'Web burned', 
+            'Performance (Seconds vs. Thrust and delta t )' ,
+            'Performance (Steps vs. Circumference and npoints)', 
+            ],
+        "horizontal_spacing": 0.1,
+        "vertical_spacing": 0.2,
+        "specs":[[{"rowspan":2},{"secondary_y": True}],
+                [    None     ,{"secondary_y": True}]],
+    }
+
+    MP = make_subplots( **subplots_config)
+    MP.update_layout(width=1200);
+
+
+    maxsteps = config["simulation"]["steps"]
+
+    cir, pts = Perf(simdf, range_x = [-1,maxsteps+1])
+
+    thr, tim = PerPh(simdf)
+
+
+    add_plot(MP, Web(curvesdf, hull_radius=  config["Physics"]["R"], lockscale=True), row=1, col=1)
+
+    add_plot(MP, thr , row=1, col=2, secondary_y=False)
+    add_plot(MP, tim , row=1, col=2, secondary_y=True)
+
+    add_plot(MP, cir , row=2, col=2, secondary_y=False)
+    add_plot(MP, pts , row=2, col=2, secondary_y=True)
+    return MP
+
 
 def Log(dflog, colmap, **kwargs):
 

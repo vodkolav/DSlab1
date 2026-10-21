@@ -12,7 +12,7 @@ from Benchmarking.telemetry_manager import DummyTelemetryManager
 
 class Lagrangian:
 
-    def __init__(self, func,  hull_radius = 4, n = 1000, d = None, window_size=50, interp_method = 'manydumb', **kwargs ):
+    def __init__(self, func, physics, n = 1000, d = None, window_size=50, interp_method = 'manydumb', **kwargs ):
         """Simulate SRM burnback
 
         Args:
@@ -40,7 +40,7 @@ class Lagrangian:
             raise ValueError("method must be one of " + str(avail_methods) + " given: " + interp_method)
         self.method = interp_method
 
-        self.hr = hull_radius
+        self.Ph: Physics = physics
         self.func = func
         self.n = n
         # TODO: validations of func and casing size
@@ -53,7 +53,8 @@ class Lagrangian:
 
 
         #Variables
-        self.SimStep=0
+        self.SimStep=-1
+        self.Time = 0
         self.I, self.RT, self.XY = self.grain(func, self.n)
 
         # segment direction vectors; size: [n,2]
@@ -84,9 +85,6 @@ class Lagrangian:
         
         self.A = self.active(self.XY)
 
-        self.HSsim = Harvester(["self.SimStep", "C", "npoints", "self.d"])
-
-
 
     def dump_curves(self, fnlocals):
         pass
@@ -97,6 +95,8 @@ class Lagrangian:
     def dump_intersections(self, fnlocals):
         pass
 
+    def dump_simulation(self, fnlocals):
+        pass
 
     def curve_intersections(self, XY):
         """Find intersections within sliding windows.
@@ -261,7 +261,7 @@ class Lagrangian:
         # Note: this assumes the center of hull is at (0,0)
         # otherwise it will give incorrect result
         R = Magn(XY)
-        A = R < self.hr
+        A = R < self.Ph.hr
         return A
 
 
@@ -341,7 +341,19 @@ class Lagrangian:
 
         C = np.sum(self.M*A2)
 
-        return I2, XY2, A2, C
+
+        inpt = {r"J_{s}": C, r"Delta_{r}": self.d}
+
+        Thrust, Delta_t = self.Ph.calculate(inpt)
+
+        self.Time+=Delta_t
+
+        npoints = len(self.I)
+        self.tele.ping("step:", self.SimStep, " | points:", npoints, " | circumference:", C)
+
+        self.dump_simulation(locals())
+
+        return I2, XY2, A2
 
 
     def step_summary(self, mode = "data"):
@@ -349,6 +361,10 @@ class Lagrangian:
             return self.SimStep
         else:
             return self.HSsim.last_step()
+
+
+    def case_summary(self):
+        return "TODO: come up with something"
 
 
     def grain(self, func, n):
@@ -379,29 +395,24 @@ class Lagrangian:
         self.tele.print('Simulation Steps:', steps)
         self.tele.print('Curve points (n):', self.n)
 
-        C = 0 
-        npoints = len(self.I)
-        self.HSsim.collect(locals())
+        self.Time = 0
 
         for self.SimStep in range(steps):
-            npoints = len(self.I)
-            self.tele.ping("step:", self.SimStep, " | points:", npoints, " | circumference:", C)
 
             res = self.step(self.I, self.XY, self.A )
 
-            self.I, self.XY, self.A, C = res
+            self.I, self.XY, self.A = res
 
             if sum(self.I.shape) >  self.n * 20 :
                 self.tele.error("too many points, stopping simulation")
                 break
 
-            self.HSsim.collect(locals())
             if sum(self.A) == 0:
                 self.tele.print("everything's burnt")
                 break
 
         #TODO return the performance curve. think more on representation
-        return self.HSsim.results()
+        return self.case_summary()
 
 
 class Physics(EquationsManager):
@@ -417,9 +428,20 @@ class Physics(EquationsManager):
 
         self.expressions = [self.substitute(self.expression(E)) for E in self.outputs]
 
+        self.lambdas = [self.lambdify(expr) for expr in self.expressions]
+
 
     def calculate(self, input: dict):
 
+        F = self.lambdas[0](input[r"J_{s}"])
+        delta_t = self.lambdas[1](*input.values())
+
         # input = {k:self.expression(v) for k,v in input.items()}
-        result = [E.evalf(subs=input) for E in self.expressions]
-        return result
+        # result = [E.evalf(subs=input) for E in self.expressions]
+
+        return F, delta_t
+
+    @property
+    def hr(self):
+        # hull radius
+        return self.expression("R")

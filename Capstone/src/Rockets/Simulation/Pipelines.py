@@ -1,7 +1,7 @@
 
-from Rockets.Simulation.Plots import preproc #_curves_data, preproc_sim_data
-from Rockets.Simulation.Plots import Web, Perf, multiplot ,save_fig, add_plot
-from Rockets.Simulation.Simulation import Lagrangian
+
+from Rockets.Simulation.Plots import WebAndPerf, save_fig
+from Rockets.Simulation.Simulation import Lagrangian, Physics
 from Rockets.Superformula.Formulas import formula1, formula2
 from Rockets.utils import describe, clip, shape, pick
 
@@ -11,12 +11,12 @@ from Benchmarking.telemetry_manager import TelemetryManager
 class SimPipeline(Pipeline):
 
     def __init__(self):
-        
 
         # Order of initializers matters, as some depend on others.
         # If a parameter changes, all downstream initializers must re-run.
         # * since Python 3.7 dicts preserve insertion order
         self.initializers = {
+                ".config.Physics": self.init_physics,
                 ".config.SFparams": self.init_sim,
             }
         self.simResult = []
@@ -44,6 +44,10 @@ class SimPipeline(Pipeline):
         # self.tele.AttachSensor(self, "execute", pth, config = conf)
 
 
+    def init_physics(self, new_case):
+        pth = "Capstone/src/Rockets/Simulation/assets/Physics.canvas"
+        self.physics = Physics(pth, overrides=new_case.config["Physics"])
+
 
     def init_sim(self, new_case):
 
@@ -53,7 +57,7 @@ class SimPipeline(Pipeline):
 
         self.profile = formula1(**new_case.config["SFparams"])
 
-        self.SIM = Lagrangian(self.profile, **new_case.config["simulation"])
+        self.SIM = Lagrangian(self.profile, self.physics, **new_case.config["simulation"])
 
         return self.SIM
 
@@ -68,21 +72,11 @@ class SimPipeline(Pipeline):
         # runs after each case is completed, and after telemetry has collected all data for the case.
         # can be used to generate plots, summaries, etc. based on the collected telemetry data.
 
-        config = self.tele.CAse.config
-
-        simdf = preproc.sim(self.tele.CAse)
-        curvesdf, colmap =  preproc.curves(self.tele.CAse)
         case_file = self.tele.CAse.case_filename(field='case_signature')
 
-        titles = ('Web burned', 'Performance (Steps vs. Circumference and npoints)' )
-        MP = multiplot(1,2, titles=titles)
+        WaP = WebAndPerf(self.tele.CAse)
 
-        add_plot(MP, Web(curvesdf, hull_radius=  config["simulation"]["hull_radius"]), row=1, col=1)
-
-        maxsteps = config["simulation"]["steps"]
-        add_plot(MP, Perf(simdf, range_x = [-1,maxsteps+1]), row=1, col=2)
-
-        save_fig(MP,save_path= case_file + ".html")
+        save_fig(WaP,save_path= case_file + ".html")
 
 
     def results(self):
