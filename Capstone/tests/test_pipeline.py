@@ -36,11 +36,11 @@ path = Path(dataroot + "SFs")
 paths = list(path.glob(patt +".png"))
 
 tracks = {
-    "episodes": {
-        "func_name": "step", 
-        "summary_func": "step_summary",
-        "sampling_type": "interval_episodes",
-        "sampling_value": 1},
+    # "episodes": {
+    #     "func_name": "step", 
+    #     "summary_func": "step_summary",
+    #     "sampling_type": "interval_episodes",
+    #     "sampling_value": 1},
     "harvest": {
         "curves": {
             "func_name": "dump_curves", 
@@ -58,7 +58,14 @@ tracks = {
                 "varnames": ["self.SimStep", 
                              "i", "j", "ti", "tj", "P", 
                              "valid", "condi", "condj"],
-                "elems": 'pois'}
+                "elems": 'pois'
+                },
+        "simulation": {
+                "func_name": "dump_simulation", 
+                "varnames": ["self.SimStep", "C", "npoints", 
+                            "self.d", "Thrust", "self.Time", "Delta_t" ],
+                "on_size_mismatch": "error"
+        }
     }
 }
 
@@ -113,6 +120,6 @@ if logdf.shape != before:
     bench.TELE.warning("Experiment Log has duplicate records", "shape before:", before, "shape after:", logdf.shape)
 
 
-L = Log(logdf, log_cmap, hover_data = 'message',  render_mode = 'SVG')
+L = Log(logdf, log_cmap, hover_data = ['message','traceback'],  render_mode = 'SVG')
 
 save_fig(L, save_path = bench.output_folder +  "/Log.html")

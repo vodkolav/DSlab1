@@ -186,9 +186,9 @@ def preproc_log_data(logdata: dict, epoch_precision = "s"):
 def preproc_sim_data(HSsim):
 
     dfSim = pd.DataFrame(HSsim).dropna()
-    dfSim.SimStep = dfSim.SimStep.apply(lambda x: x[0])
-    dfSim.C = dfSim.C.apply(lambda x: x[0])
-    dfSim.npoints = dfSim.npoints.apply(lambda x: x[0])
+    # dfSim.SimStep = dfSim.SimStep.apply(lambda x: x[0])
+    # dfSim.C = dfSim.C.apply(lambda x: x[0])
+    # dfSim.npoints = dfSim.npoints.apply(lambda x: x[0])
     return dfSim
 
 
@@ -290,7 +290,7 @@ class preproc():
 
     @staticmethod
     def sim(cAse: Case, *args, **kwargs):
-        sim_dict = cAse.get_path('tracks.episodes.data')
+        sim_dict = cAse.get_path('tracks.harvest.simulation.data')
         simdf = preproc_sim_data(sim_dict, *args, **kwargs)
         simdf["case_id"] = cAse.get_path("ID.case_id")
         return simdf
@@ -451,11 +451,34 @@ def Perf(simDF , **kwargs):
     # return secondary_y(circ, pnts, 'Performance')
 
 
+def PerPh(simDF, **kwargs):
+    # physical performance
+
+    Thrust = px.line(simDF, x = 'Time', y = 'Thrust', 
+                   color_discrete_sequence=['red'], **kwargs)
+    Thrust.update_traces(name = 'Thrust', line=dict(width=2))
+
+    Thrust.update_yaxes(title='Thrust', 
+                      tickfont=dict(color='red'))
+
+    delta_t = px.line(simDF, x = 'Time', y = 'Delta_t',
+                   color_discrete_sequence=['blue'], **kwargs)
+    delta_t.update_traces(name = 'Delta_t', line=dict(width=2))
+
+    delta_t.update_yaxes(title='Delta_t', 
+                    tickfont=dict(color='blue'))
+    
+    return Thrust, delta_t
+
+
+
 def Log(dflog, colmap, **kwargs):
 
         more = trypop(kwargs, 'hover_data', [])
 
-        hover_data = ['case_signature', 'case_index'] + ia(more)
+        more = [m for m in ia(more) if m in dflog.columns]
+
+        hover_data = ['case_signature', 'case_index'] + more
 
         fig = px.scatter(dflog, x = 'dt', y = 'y', color = 'type', #title = "Log data",
                         hover_data = hover_data, 
@@ -471,21 +494,6 @@ def Log(dflog, colmap, **kwargs):
         return fig
 
 
-def multiplot(rows=1, cols=2, width=600, height=600, titles = None, **kwargs):
-    
-    width = width * cols
-    height = height * rows
-    
-    fig = make_subplots( rows, cols, horizontal_spacing=0.1, vertical_spacing=0.1,
-                        subplot_titles=titles, **kwargs)
-
-    # fig.update_layout(yaxis_range = [-Rmax, Rmax], xaxis_range = [-Rmax, Rmax], **self.conf("layout"))
-    
-    # 5) Optional layout tweaks
-    fig.update_layout(width=width, height=height) #, margin=dict(l=10, r=10, t=10, b=10))
-    # fig.update_yaxes(scaleanchor="x", scaleratio=1, row=1, col=1)
-    fig.update_traces(marker=dict(size=1))
-    return fig
 
 
 def secondary_y(fig1, fig2, title = 'legend'):
@@ -613,20 +621,27 @@ def save_fig(fig, save_path = None, copyable_points=True):
 
 def add_plot(multiplt: go.Figure, plot: go.Figure, row, col, secondary_y=False):
 
-    xaxis = plot.layout.xaxis
-    yaxis = plot.layout.yaxis
+    yaxisTitle = plot.layout.yaxis.title.text
 
-    for trace in plot.select_traces():
-        # trace.name = titley    # important  
-        trace.legendgroup = yaxis.title.text 
+    for trace in plot.data:
+        trace.legendgroup = yaxisTitle
         trace.showlegend = True
+
         multiplt.add_trace(trace, row=row, col=col, secondary_y=secondary_y)
+
+    # add_trace does not update axes for some reason. have to it myself
+    mpyx = list(multiplt.select_yaxes(row=row, col=col, secondary_y=secondary_y))[0]
+    pltyx = list(plot.select_yaxes())[0]
+    spec = {k:v for k,v in pltyx._props.items() if k not in mpyx._props}
+    multiplt.update_yaxes(spec, row=row, col=col, secondary_y=secondary_y)
+
+    mpxx = list(multiplt.select_xaxes(row=row, col=col, ))[0]
+    pltxx = list(plot.select_xaxes())[0]
+    spec = {k:v for k,v in pltxx._props.items() if k not in mpxx._props}
+    multiplt.update_xaxes(spec, row=row, col=col)
 
     for f in plot.select_shapes():
         multiplt.add_shape(f, row=row, col=col)
-    
-    # multiplt.update_xaxes(**xaxis._props, row=row, col=col)
-    multiplt.update_yaxes(patch=yaxis._props, row=row, col=col, secondary_y=secondary_y, )
 
     return multiplt
 
