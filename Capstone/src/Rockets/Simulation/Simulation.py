@@ -1,0 +1,447 @@
+
+import numpy as np
+from Rockets.Geometry import circumference, normals, Magn, cslice, pol2cart,\
+                            cart2pol, intersections, slerp, rarefactions, segments,\
+                            interp, interp_parametric, bimodal_means
+from Rockets.Equations import EquationsManager
+from Benchmarking.sensors.Harvester import Harvester
+
+from Benchmarking.telemetry_manager import DummyTelemetryManager
+
+
+
+class Lagrangian:
+
+    def __init__(self, func, physics, n = 1000, d = None, window_size=50, interp_method = 'manydumb', **kwargs ):
+        """Simulate SRM burnback
+
+        Args:
+            func (def): function defining the curve. must be of form Radius = f(Theta)
+            hull_radius (int, optional): _description_. Defaults to 4.
+            n (int, optional): simulation points. Defaults to 1000.
+            d (float, optional): step size. Defaults to None (automatic).
+            window_size (int, optional): window size for intersections detection. Defaults to 50.
+            interp_method (str, optional): interpolation method for filling of rearefactions. Defaults to 'manydumb'.
+
+        Raises:
+            ValueError: _description_
+            ValueError: _description_
+        """
+
+        self.tele = DummyTelemetryManager()
+        #Settings
+        if window_size < 2:
+            raise ValueError('window_size must be >= 2')
+        self.window_size = window_size
+
+
+        avail_methods = ['dumb', 'manydumb', 'interp', 'interp_parametric', 'slerp']
+        if interp_method not in avail_methods:
+            raise ValueError("method must be one of " + str(avail_methods) + " given: " + interp_method)
+        self.method = interp_method
+
+        self.Ph: Physics = physics
+        self.func = func
+        self.n = n
+        # TODO: validations of func and casing size
+
+
+        # Caching variables: only relevant to current step.
+        
+        # normals; size: [n,2]
+        self.N = []
+
+
+        #Variables
+        self.SimStep=-1
+        self.Time = 0
+        self.I, self.RT, self.XY = self.grain(func, self.n)
+
+        # segment direction vectors; size: [n,2]
+        self.S = segments(self.XY)
+
+        self.M = Magn(self.S)
+
+        self.d = d if bool(d) else bimodal_means(self.M).min()
+
+        divergents = rarefactions(self.M, self.d)
+
+        newI, newXY =  self.fill(self.I, self.XY, divergents )
+
+        self.B = np.zeros_like(self.I)
+
+        XY = np.insert(self.XY, newI, newXY, axis=0)
+        I = np.arange(XY.shape[0])
+        self.I, self.XY = I, XY
+
+        self.S = segments(self.XY)
+        self.M = Magn(self.S)
+        self.d = d if bool(d) else bimodal_means(self.M).max()
+
+
+        iB = np.ones_like(newI)*2
+
+        self.B = np.insert(self.B, newI, iB)
+        
+        self.A = self.active(self.XY)
+
+
+    def dump_curves(self, fnlocals):
+        pass
+
+    def dump_curves1(self, fnlocals):
+        pass
+
+    def dump_intersections(self, fnlocals):
+        pass
+
+    def dump_simulation(self, fnlocals):
+        pass
+
+    def curve_intersections(self, XY):
+        """Find intersections within sliding windows.
+        For each window start, test the first ray (index i=start) against all following rays in the window.
+        Return compact arrays of hits (i, j, ti, tj, Px, Py)."""
+
+
+        n = XY.shape[0]
+
+
+        filt = np.zeros(n).astype(bool)
+        newXY = np.zeros((0,2))
+        newI = np.zeros(0)
+
+        # TODO: use numpy sliding window?
+        # https://medium.com/@whyamit404/understanding-sliding-window-in-numpy-50c86cac822b
+
+        i = 0 
+
+        while i < n :
+            j = 0 
+            c0 = XY[i]            # segment origin
+            v0 = self.S[i]        # segment direction
+
+            sl = cslice(i+2, i+self.window_size, n)
+
+            c_block = XY[sl] # segments origin
+            v_block = self.S[sl] # segments direction
+            # rest of the vectors in window (shifted by 2 to avoid adjacent segments)
+            # Adjacent segments by definition intersect at their shared vertex, which is not a valid intersection for our purposes. 
+            # By shifting by 2, we ensure that we are only checking for intersections between non-adjacent segments.
+
+            
+            ti, tj, valid = intersections(c0, v0, c_block, v_block) 
+            # valid = valid & (((l < ti) & (ti  < u)) | ((l < tj ) & (tj < u)))
+
+
+            # whether intersection is within bounds of segment i (belonging to XY point I)
+            condi = (0 <= ti) & (ti <= 1)
+            # whether intersection is within bounds of segment j
+            condj = (0 <= tj) & (tj <= 1)
+
+            pois = ~valid | (condi & condj) # points of interest
+
+            P = c0 + np.stack((ti,ti), axis=1) * v0
+
+            if any(condi & condj):
+                j_block = np.max(np.where(condi & condj))
+                j = i + 2 + j_block
+                sl = cslice(i+1,j+1,n)
+                filt[sl] = True
+
+                self.dump_intersections(locals())
+
+                newXY = np.concatenate((newXY, P[j_block:j_block+1,:]), axis=0) 
+                newI = np.concatenate((newI, [j]), axis=0)
+                i = j+1 # skip checking all the points between i and j
+                # once the outermost caustic is found, we don't need 
+                # to check all the inner ones - they are deleted in any case
+            else:
+                i+=1
+
+        return filt, ((newI+1) % n).astype(int), newXY
+
+
+    def interpolate(self, XY1, i, s, p, method):
+        xy = []
+
+        if method in ('manydumb'):
+            ofsts = np.linspace([0,],[1,],p+2)[1:-1]
+
+            wat = np.dot(ofsts, s.T)
+
+            j = cslice(i,i+1,XY1.shape[0])
+            xy  = XY1[j,:] + wat 
+
+
+        elif method == 'interp':
+            # first, calculate x values where y needs to be interpolated
+            xy = self.interpolate(XY1, i,s,p, method = 'manydumb')
+            slc = cslice(i-3,i+3, XY1.shape[0])
+            try:
+                xy = interp(XY1[slc,:], xy)
+            except Exception as e:
+                self.tele.error(e)
+
+
+        elif method == 'interp_parametric':
+
+            w=3 # half-width of the interpolation chord window 
+
+            ofsts = np.linspace(0,1,p+2)[1:-1]
+
+            slc = cslice(i-w,i+w, XY1.shape[0])
+
+            XY_v = XY1[slc,:]
+            d_v = self.M[slc]
+
+            t_v =  np.cumsum(np.concatenate([[0], d_v[:-1]]))
+
+            t_new = t_v[w-1] + d_v[w-2] * ofsts
+
+
+            try:
+                xy = interp_parametric(XY_v, t_v, t_new)
+            except Exception as e:
+                self.tele.error(e)
+
+        elif method == 'slerp':
+            # not working! 
+            f,t = cslice(i-1,i+1, XY1.shape[0])
+            newN = slerp(self.N[f,:], self.N[t,:], self.d)
+            xy = self.advance(XY1[f,:], newN, self.d, True)
+            onns = np.ones(xy.shape[0])
+
+        else: 
+            raise KeyError(f" method {method} not recognized")
+
+        return xy
+
+
+    def fill(self, I, XY1, divergents):
+
+
+        if self.method == 'dumb':
+                # simplest interpolation: just add half the segment vector to the start point of the segment
+                newXY = XY1[divergents] + self.S[divergents] * 0.5
+                newI = I[divergents]
+        else:
+            # add multiple points along the segment vector
+
+            I_d = I[divergents] # indices of the divergent segments
+
+            S_d = self.S[divergents,:,None] # segments direction vectors of divergents
+                                            # The 'None' pre-expands S into 3rd dimension 
+                                            # so that s elements play nicely with np.dot down the line
+
+            l_d = self.M[divergents]  # lengths of those segments
+
+            P_d = (l_d/self.d).astype(int) # number of points to add along each such segment
+
+
+            newXY = np.zeros((0,2))
+            newI = np.zeros(0)
+
+            for i,s,p in zip(I_d, S_d, P_d):
+                onns = np.ones(p)
+
+                xy = self.interpolate(XY1, i, s, p, self.method)
+
+                newXY = np.concatenate((newXY, xy), axis=0)
+
+                newI = np.concatenate((newI, onns*(i)), axis=0)
+
+            newI = newI.astype(int)+1
+            # newI, newXY
+
+        return newI, newXY
+
+
+    def active(self, XY):
+        # Note: this assumes the center of hull is at (0,0)
+        # otherwise it will give incorrect result
+        R = Magn(XY)
+        A = R < self.Ph.hr
+        return A
+
+
+    def advance(self, O, N, d, A):
+        dd = np.ones([2,1]) * d
+        E =  O + (dd * A).T * N
+        return E
+
+
+    def step(self, I, XY, A):
+# I
+# Advance all points in their Normal direction
+        self.N = normals(XY)
+
+        E = self.advance(XY, self.N, self.d, A)
+        if not (XY.shape[0]  == self.N.shape[0] == I.shape[0]):
+            raise ValueError('All inputs must have same length')
+
+# detect caustics
+        self.S = segments(E)
+
+        F, iI, iXY  = self.curve_intersections(E) # *(1+s*0.1)
+        # F (filter) is True where the points should be filtered out / dropped
+        # maybe make it Keep instead? 
+
+        self.dump_curves(locals())
+
+        # from this point on the old I, XY, A are obsolete
+        # e.g all is prev step
+
+# I1
+
+# keep filter and "Born" label consistent with XY by inserting zeros 
+# (e.g do not filter) where new points are born
+        iF = np.zeros_like(iI).astype(bool)
+        F1 = np.insert(F, iI, iF, axis=0)
+
+        # B is for Born (isNew renamed to B)
+        B = np.zeros_like(I)
+        iB = np.ones_like(iI) # bis=1 ; born from intersections has value B=1
+        B = np.insert(B, iI, iB, axis=0)
+
+# Insert new points where caustic intersects itself 
+        XY1 = np.insert(E, iI, iXY, axis=0)
+
+# Filter caustics points
+        if F1.size != 0: #TODO should check if filt has any True instead
+            XY1 = XY1[~F1]
+            B = B[~F1]
+
+        I1 = np.arange(XY1.shape[0])
+
+        self.dump_curves1(locals())
+
+# I2  
+# detect rarefactions
+        self.S = segments(XY1)
+
+        self.M = Magn(self.S)
+
+        divergents = rarefactions(self.M, self.d)
+
+# birth new points for filling the rarefactions
+        iI, iXY =  self.fill(I1, XY1, divergents )
+
+        XY2 = np.insert(XY1, iI, iXY, axis=0)
+        I2 = np.arange(XY2.shape[0])
+
+
+        iB = np.ones_like(iI)*2 # brr=2; born from rarefactions has value 2 in B
+        self.B = np.insert(B, iI, iB, axis=0)
+
+
+        A2 = self.active(XY2)
+        self.S = segments(XY2)
+        self.M = Magn(self.S)
+
+        C = np.sum(self.M*A2)
+
+
+        inpt = {r"J_{s}": C, r"Delta_{r}": self.d}
+
+        Thrust, Delta_t = self.Ph.calculate(inpt)
+
+        self.Time+=Delta_t
+
+        npoints = len(self.I)
+        self.tele.ping("step:", self.SimStep, " | points:", npoints, " | circumference:", C)
+
+        self.dump_simulation(locals())
+
+        return I2, XY2, A2
+
+
+    def step_summary(self, mode = "data"):
+        if mode == "index":
+            return self.SimStep
+        else:
+            return self.HSsim.last_step()
+
+
+    def case_summary(self):
+        return "TODO: come up with something"
+
+
+    def grain(self, func, n):
+        T = np.linspace(0, np.pi*2, n, endpoint=False) + 0.0001
+        # T = np.append(T, T[:1])
+        I = np.arange(len(T))
+        # Calculate Radius for each Theta
+        R = func(T)
+        RT = np.stack((R,T), axis=1)
+
+        X, Y = pol2cart(R, T)
+        XY = np.stack((X,Y), axis=1)
+
+        return I, RT, XY 
+
+
+    def run(self, steps = 1):
+        """runs the simulation
+
+        Args:
+            steps (int, optional): max simulation steps. Defaults to 1.
+
+        Returns:
+            dict: dictionary of results data
+        """
+        
+        self.tele.print('Simulation step size(d):', self.d)
+        self.tele.print('Simulation Steps:', steps)
+        self.tele.print('Curve points (n):', self.n)
+
+        self.Time = 0
+
+        for self.SimStep in range(steps):
+
+            res = self.step(self.I, self.XY, self.A )
+
+            self.I, self.XY, self.A = res
+
+            if sum(self.I.shape) >  self.n * 20 :
+                self.tele.error("too many points, stopping simulation")
+                break
+
+            if sum(self.A) == 0:
+                self.tele.print("everything's burnt")
+                break
+
+        #TODO return the performance curve. think more on representation
+        return self.case_summary()
+
+
+class Physics(EquationsManager):
+
+    def __init__(self, canvas, overrides: dict):
+        super().__init__(canvas)
+        self.inputs = [r"J_{s}", r"Delta_{r}"]
+        self.outputs = [r"F", r"Delta_{t}"]
+
+        self.overrides(overrides)
+
+        self.make_replacements()
+
+        self.expressions = [self.substitute(self.expression(E)) for E in self.outputs]
+
+        self.lambdas = [self.lambdify(expr) for expr in self.expressions]
+
+
+    def calculate(self, input: dict):
+
+        F = self.lambdas[0](input[r"J_{s}"])
+        delta_t = self.lambdas[1](*input.values())
+
+        # input = {k:self.expression(v) for k,v in input.items()}
+        # result = [E.evalf(subs=input) for E in self.expressions]
+
+        return F, delta_t
+
+    @property
+    def hr(self):
+        # hull radius
+        return self.expression("R")

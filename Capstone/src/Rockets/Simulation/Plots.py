@@ -1,0 +1,804 @@
+import numpy as np
+import pandas as pd
+import plotly.figure_factory as ff
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import plotly.express as px
+from Rockets.Geometry import pol2cart, cart2pol
+from Rockets.utils import trypop, ia
+from Benchmarking.Case import  Case
+
+import json
+import ipywidgets as widgets
+from IPython.display import display, Javascript
+
+def dots_and_arrows(dfC, color_map, dfI, **kwargs):   
+
+
+    dfC["statCol"] = dfC.status.map(color_map)
+
+    lockscale = trypop(kwargs,"lockscale", False)
+
+
+    Nx, Ny = dfC.Ex - dfC.X, dfC.Ey - dfC.Y
+
+    fig = ff.create_quiver(x=dfC.X, y=dfC.Y, u=Nx, v=Ny, 
+                           name='offset',
+                           hoverinfo = 'text',
+                           hovertext=dfC.hovertext, 
+                           scale=1, arrow_scale=.05)
+
+    fig.add_trace(go.Scatter(x=dfI.Px, y=dfI.Py,
+                             name='intersections',
+                             hovertext = dfI.hovertext,
+                             marker=dict(size=6,
+                                         color = dfI.clas, 
+                                         symbol = 'x'),
+                             mode='markers',
+                             ))
+    
+    # Seg = ff.create_quiver(x=dfC.X, y=dfC.Y, u=dfC.Sx, v=dfC.Sy, 
+    #                     #    line=dict(color='red'), 
+    #                         marker=dict(color='red'), 
+    #                         name='segments',
+    #                         hoverinfo = 'text',
+    #                         text=dfC.hovertext, 
+    #                         scale=.99, arrow_scale=.09)
+    # fig.add_traces(Seg)
+
+    fig.add_trace(go.Scatter(x=dfC.X, y=dfC.Y,
+                             name='XY',
+                             hovertext=dfC.I,
+                             marker=dict(
+                                        size=4),
+                            # color=dfC.statCol,
+                             mode='lines' 
+                            ))
+
+    fig.add_trace(go.Scatter(x=dfC.Ex, y=dfC.Ey, 
+                             name='ExEy-line',
+                             mode='lines',
+                             hovertext=dfC.hovertext,
+                             ))
+
+    fig.add_trace(go.Scatter(x=dfC.Ex, y=dfC.Ey, 
+                             name='ExEy',
+                             hovertext=dfC.hovertext,
+                             marker=dict(size=4,
+                                         color=dfC.statCol), 
+                             mode='markers',
+                             ))
+
+    # fig.update_layout(shapes = [casing(SIM.hr)])
+
+    fig.update_layout(width=800, height=800)
+
+    if lockscale:
+        fig.update_yaxes(scaleanchor="x", scaleratio=1)
+
+    return fig
+
+
+def Interactive_polar(df, **kwargs):
+    # Interactive Polar plot
+    #R upper bound
+    Rub = np.ceil(df.R.max()) + 1
+
+    fig = px.line_polar(df, r="R", theta="TD", line_close=True,
+                        range_r=[0,Rub], animation_frame="Step", 
+                        direction= "counterclockwise", start_angle=0,
+                        #color_discrete_sequence=px.colors.sequential.Plasma_r, 
+                        #template="plotly_dark",)
+                        **kwargs
+                        )
+    fig.show()
+
+
+def minipad(df, index = "SimStep", col = 'I', value = "stat"):
+    """Pad a DataFrame to ensure that all combinations of index and columns are present.
+
+    Args:
+        df (pd.DataFrame): The input DataFrame to pad.
+        index (str, optional): The name of the index column. Defaults to "SimStep".
+        cols (list, optional): List of column names to consider for padding. Defaults to ['I'].
+        value (str, optional): The name of the value column. Defaults to "stat".
+
+    Returns:
+        pd.DataFrame: The padded DataFrame.
+    """
+
+    # index = "SimStep"  
+
+    # cols = ['I']
+
+    # value = "stat" 
+
+    lasti = df.groupby(index)[col].max()+1 # or min -1 ? 
+
+    lasti = lasti.reset_index()
+
+    Is = lasti.values 
+    Ss = df[value].unique()
+
+    Ss = np.expand_dims(Ss, axis = 1)
+    Ss
+
+    pld = [np.concat([a, b]) for a in Is for b in Ss]
+
+    pld = pd.DataFrame(pld, columns=[ index, col, value])
+
+    paddf = pd.concat([df,pld], axis=0)
+    paddf = paddf.sort_values(by=[index, col, value]).reset_index(drop=True)
+    return paddf
+
+
+def pad(df: pd.DataFrame, cols = ['frame', 'category'] ):
+    """Workaround for plotly bug. 
+    When creating the px.scatter animation, 
+    the df does not have all the possible values of "category" 
+    within the values for the first frame. 
+    thus only those that are in the first frame end up in the plot legend. 
+    and it stays like this for the whole duration of the animation, 
+    even though points with color corresponding to these other 
+    categories do appear on the animated plot. 
+    but not in the legend. 
+
+    Args:
+        df (DataFrame): the DataFrame to pad
+        cols (list, optional): columns that together compose a unique multiindex. Defaults to ['frame', 'category'].
+
+    Returns:
+        DataFrame: the padded DataFrame
+    """
+
+    all_cols = [df[c].unique() for c in cols]
+
+    mux = pd.MultiIndex.from_product(all_cols, names=cols)
+
+    # 2. Reindex dataframe to fill missing slots with NaN/None values
+    padded_df = df.set_index(cols)
+    padded_df = padded_df.reindex(mux)
+    padded_df = padded_df.reset_index()
+
+    return padded_df
+
+
+def preproc_log_data(logdata: dict, epoch_precision = "s"):
+    colmap = { "ping": "green", "info": "blue", "warning": "orange", "error": "red"}
+    ymap = {"ping": 0, "info": 1, "warning": 2, "error": 3}
+
+    dflog = pd.DataFrame(logdata)
+    dflog['y'] = dflog['type'].map(ymap) + 0.4 * (dflog.case_signature == "experiment")
+
+    if epoch_precision == "s":
+        mult = 1000
+    elif epoch_precision == "ms":
+        mult = 1
+    else:
+        raise ValueError("epoch_precision possible values: 's', 'ns'")
+    dflog["time"] = dflog["time"]*mult
+    dflog["dt"] = pd.to_datetime(dflog["time"], unit='ms')# must be in ms
+    dflog['symbol'] = dflog.case_signature.apply(lambda l: 101 if l != "experiment" else 102)
+    # dflog['level'] = 101 if 
+    return dflog, colmap
+
+
+def preproc_sim_data(HSsim):
+
+    dfSim = pd.DataFrame(HSsim).dropna()
+    # dfSim.SimStep = dfSim.SimStep.apply(lambda x: x[0])
+    # dfSim.C = dfSim.C.apply(lambda x: x[0])
+    # dfSim.npoints = dfSim.npoints.apply(lambda x: x[0])
+    return dfSim
+
+
+def from_md(txt: str):
+    from io import StringIO
+
+    mapping = pd.read_table(StringIO(txt), sep="\\s*\\|\\s*", 
+                            header=0, index_col=7, 
+                            skipinitialspace=True,
+                            engine='python'
+                            ).\
+                 dropna(axis=1, how='all').\
+                 iloc[1:]
+    mapping.index = mapping.index.astype(int)
+    return mapping
+
+
+ColorMappingMD = """
+|    Hex  | clr | F    | B    | E    |  desc        | stt |
+| ------- | --- | ---- | ---- | ---- |  ----------- | --- |
+| #000000 | blk | 0kep | 0old | 0act | 0mov         |  0  |
+| #FFAAFF | pnk | 1del | 1bis | 1end | 7del bis end |  7  |
+| #FFFFFF | wht | 1del | 2brr | 1end |11del brr end | 11  |
+| #FF0000 | red | 1del | 0old | 0act | 1del         |  1  |
+| #008800 | grn | 0kep | 1bis | 0act | 4    bis     |  4  |
+| #00FF00 | grs | 0kep | 2brr | 0act | 8    brr     |  8  |
+| #0000FF | blu | 0kep | 0old | 1end | 2        end |  2  |
+| #FF00FF | mgt | 1del | 0old | 1end | 3del     end |  3  |
+| #FFAA00 | ong | 1del | 1bis | 0act | 5del bis     |  5  |
+| #FFFF00 | ylw | 1del | 2brr | 0act | 9del brr     |  9  |
+| #00AAFF | sky | 0kep | 1bis | 1end | 6    bis end |  6  |
+| #00FFFF | cyn | 0kep | 2brr | 1end |10    brr end | 10  |
+"""
+
+
+def preproc_curves_data(HScurves, dopad = False, **kwargs):
+
+    HScurves = pd.DataFrame(HScurves)
+
+    B = HScurves.get("B",HScurves.get("IsNew")) # backward compatibility fallback for B's old name
+    F = HScurves.get("F",HScurves.get("filt"))
+    E = ~HScurves.A
+
+    HScurves["stat"] =  F*1 + B*4 + E*2 
+
+    if dopad:
+        HScurves = minipad(HScurves, index = "SimStep", col = "I", value="stat" )
+        HScurves = minipad(HScurves, col = "SimStep", index = "I", value = "stat" )
+
+    sm10 = (HScurves['SimStep']%10)
+
+    HScurves['StepMod10'] = sm10.astype(str)
+    
+    HScurves['Imod10'] = (HScurves['I']%10).astype(str)
+
+    mapping = from_md(ColorMappingMD)
+
+    cat_map   = mapping.desc.to_dict()
+    color_map = mapping.Hex.to_dict()
+
+    HScurves["status"] = HScurves.stat.map(cat_map)
+    HScurves["statCol"] = HScurves.stat.map(color_map)
+
+    HScurves['hovertext'] =  HScurves.apply( lambda r : "<br>".join([ f"I: {r.I}", f"St: {r.status}"]), axis=1)
+
+    stat2colr = mapping[["desc", "Hex"]]
+    stat2colr.set_index('desc', inplace = True)
+    color_map = stat2colr.to_dict()['Hex']
+
+    return HScurves, color_map
+
+
+def preproc_intersections_data(HSintersections, **kwargs):
+
+    
+    dfI = pd.DataFrame(HSintersections)
+
+
+    if 'clas' not in dfI.columns:
+        dfI['clas'] = ~dfI.valid*1 + dfI.condi*2 + dfI.condj * 4
+
+    dfI['hovertext'] = dfI.apply( lambda r : "<br>".join([ f"i: {r.i}", f"j: {r.j}", f"cls: {r.clas}"]), axis=1)
+
+
+    return dfI
+
+
+class preproc():
+
+    @staticmethod
+    def curves(cAse: Case, dopad=True, *args, **kwargs):
+        curves_dict = cAse.get_path('tracks.harvest.curves.data')
+        curvesdf, color_map = preproc_curves_data(curves_dict, dopad = dopad, *args, **kwargs)
+        curvesdf["case_id"] = cAse.get_path("ID.case_id")
+        curvesdf["case_index"] = cAse.get_path("ID.case_index")
+        curvesdf.sort_values(["SimStep","I","A"],inplace= True)
+        return curvesdf, color_map
+
+
+    @staticmethod
+    def sim(cAse: Case, *args, **kwargs):
+        sim_dict = cAse.get_path('tracks.harvest.simulation.data')
+        simdf = preproc_sim_data(sim_dict, *args, **kwargs)
+        simdf["case_id"] = cAse.get_path("ID.case_id")
+        return simdf
+
+
+    @staticmethod
+    def intersections(cAse: Case, *args, **kwargs):
+        intersections_dict = cAse.get_path('tracks.harvest.intersections.data')
+        intersectionsdf = preproc_intersections_data(intersections_dict, *args, **kwargs)
+        intersectionsdf["case_id"] = cAse.get_path("ID.case_id")
+        return intersectionsdf
+
+
+    @staticmethod
+    def log(cAse: Case, *args, **kwargs):
+        # data_dict = cAse.get_path('tracks.log.data')
+        data_dict = cAse.TrackWithID("log")
+        datadf, color_map = preproc_log_data(data_dict, *args, **kwargs)
+        # datadf["case_id"] = cAse.get_path("ID.case_id")
+        return datadf, color_map
+
+
+def inject_config(fig, plotconfig):
+
+    from types import MethodType
+
+    def _ipython_display_(self):
+        """
+        Handle rich display of figures in ipython contexts
+        """
+        import plotly.io as pio
+
+        if pio.renderers.render_on_display and pio.renderers.default:
+            pio.show(self, config = plotconfig)
+        else:
+            print(repr(self))
+
+    fig._ipython_display_ = MethodType(_ipython_display_, fig)
+
+
+
+def animate(curvesDF, hull_radius, color_map, **kwargs):
+
+    # curvesDF, curve_colors = preproc_curves_data(tracks['log']['data'], dopad = True)
+
+    stats = curvesDF['status'].unique().astype(str).tolist()
+    stats.sort()
+
+    #R upper bound
+    Rub = hull_radius*1.1
+
+    asc = trypop(kwargs, 'ascending', True)
+    curvesDF = curvesDF.sort_values(by='SimStep', ascending=asc)
+
+    lockscale = trypop(kwargs,"lockscale", False)
+
+    title = "Case " + str(curvesDF.case_index[0]) + ": " +  str(curvesDF.case_id[0])
+
+    fig = px.scatter(curvesDF, x="X", y="Y",
+                        color="status", 
+                        # animation_group="I",
+                        range_x=[-Rub,Rub], range_y=[-Rub,Rub],
+                        hover_data=["I", "SimStep", 'stat'],
+                        animation_frame="SimStep", 
+                        animation_group="I",
+                        color_discrete_map=color_map,
+                        title = title,
+                        # direction= "counterclockwise", start_angle=0,
+                        #color_discrete_sequence=px.colors.sequential.Plasma_r, 
+                        #template="plotly_dark",)
+                        
+                        category_orders={"status": stats},
+                        **kwargs,
+                        # render_mode="SVG"
+                        )
+
+    fig.update_layout(shapes = [casing(hull_radius)], template='ggplot2')
+    fig.update_traces(marker=dict(size=4))
+
+    if lockscale:
+        fig.update_yaxes(scaleanchor="x", scaleratio=1)
+
+    plotconfig = {
+    # "download plot" button - downloads the png with case_id as name  
+    'toImageButtonOptions': {
+        'format': 'png', # one of png, svg, jpeg, webp
+        'filename': curvesDF['case_id'][0],
+        'scale': 1 # Multiply title/legend/axis/canvas sizes by this factor
+        }
+    }
+
+    inject_config(fig, plotconfig)
+    return fig
+
+
+def casing(R):
+    (x0, y0, x1, y1) = np.array((-1,-1,1,1)) * R
+    
+    shape = dict(
+            type="circle",
+            x0=x0, y0=y0, x1=x1, y1=y1,
+            xref="x", yref="y",            # Locks the circle to data coordinates
+            line=dict(
+                color="grey", 
+                width=1,
+                # dash="dash"                # Options: 'solid', 'dash', 'dot', 'dashdot'
+            ),
+            fillcolor="rgba(0, 0, 0, 0)"   # Keeps the inside transparent so data shows through
+        )
+    
+    return shape
+
+
+def Web(curvesDF, hull_radius, color='StepMod10', **kwargs):
+
+    #R upper bound
+    Rub = np.ceil(hull_radius*1.01) 
+
+    lockscale = trypop(kwargs,"lockscale", False)
+
+    
+    grain = px.line(curvesDF, x="X", y="Y",
+                        # color="stat", 
+                        range_x=[-Rub,Rub], range_y=[-Rub,Rub],
+                        hover_data=["I", "SimStep"],
+                        color=color,
+                        # direction= "counterclockwise", start_angle=0,
+                        #color_discrete_sequence=px.colors.sequential.Plasma_r, 
+                        #template="plotly_dark",)
+                        #category_orders={"stat": ["0", "1", "2", "3"]},
+                        # width=700, height=600,
+                        **kwargs
+                        )
+    grain.update_layout(shapes=[casing(hull_radius)])
+    grain.update_traces(marker=dict(size=4))
+    if lockscale:
+        grain.update_yaxes(scaleanchor="x", scaleratio=1)
+    return grain
+
+
+def Perf(simDF , **kwargs):
+
+    circ = px.line(simDF, x = 'SimStep', y = 'C', 
+                   color_discrete_sequence=['red'], **kwargs)
+    circ.update_traces(name = 'circumference', line=dict(width=2))
+
+    circ.update_yaxes(title='circumference', 
+                      tickfont=dict(color='red'))
+
+    pnts = px.line(simDF, x = 'SimStep', y = 'npoints',
+                   color_discrete_sequence=['blue'], **kwargs)
+    pnts.update_traces(name = 'npoints', line=dict(width=2))
+
+    pnts.update_yaxes(title='npoints', 
+                    tickfont=dict(color='blue'))
+    
+    return circ, pnts
+    # return secondary_y(circ, pnts, 'Performance')
+
+
+def PerPh(simDF, **kwargs):
+    # physical performance
+
+    Thrust = px.line(simDF, x = 'Time', y = 'Thrust', 
+                   color_discrete_sequence=['red'], **kwargs)
+    Thrust.update_traces(name = 'Thrust', line=dict(width=2))
+
+    Thrust.update_yaxes(title='Thrust', 
+                      tickfont=dict(color='red'))
+
+    delta_t = px.line(simDF, x = 'Time', y = 'Delta_t',
+                   color_discrete_sequence=['blue'], **kwargs)
+    delta_t.update_traces(name = 'Delta_t', line=dict(width=2))
+
+    delta_t.update_yaxes(title='Delta_t', 
+                    tickfont=dict(color='blue'))
+    
+    return Thrust, delta_t
+
+
+def WebAndPerf(CAse):
+
+    config = CAse.config
+
+    simdf = preproc.sim(CAse)
+    curvesdf, colmap =  preproc.curves(CAse)
+
+    subplots_config = {
+        "rows": 2, 
+        "cols": 2,
+        "column_widths": [1,1],
+        "row_heights": [1,1],
+        # "width": 1200,
+        "subplot_titles": [
+            'Web burned', 
+            'Performance (Seconds vs. Thrust and delta t )' ,
+            'Performance (Steps vs. Circumference and npoints)', 
+            ],
+        "horizontal_spacing": 0.1,
+        "vertical_spacing": 0.2,
+        "specs":[[{"rowspan":2},{"secondary_y": True}],
+                [    None     ,{"secondary_y": True}]],
+    }
+
+    MP = make_subplots( **subplots_config)
+    MP.update_layout(width=1200);
+
+
+    maxsteps = config["simulation"]["steps"]
+
+    cir, pts = Perf(simdf, range_x = [-1,maxsteps+1])
+
+    thr, tim = PerPh(simdf)
+
+
+    add_plot(MP, Web(curvesdf, hull_radius=  config["Physics"]["R"], lockscale=True), row=1, col=1)
+
+    add_plot(MP, thr , row=1, col=2, secondary_y=False)
+    add_plot(MP, tim , row=1, col=2, secondary_y=True)
+
+    add_plot(MP, cir , row=2, col=2, secondary_y=False)
+    add_plot(MP, pts , row=2, col=2, secondary_y=True)
+    return MP
+
+
+def Log(dflog, colmap, **kwargs):
+
+        more = trypop(kwargs, 'hover_data', [])
+
+        more = [m for m in ia(more) if m in dflog.columns]
+
+        hover_data = ['case_signature', 'case_index'] + more
+
+        fig = px.scatter(dflog, x = 'dt', y = 'y', color = 'type', #title = "Log data",
+                        hover_data = hover_data, 
+                        custom_data= [list(dflog.index)],
+                        # labels = {'value': 'Value', 'time': 'Time (s)', 'type': 'Type'},
+                        color_discrete_map = colmap, **kwargs )
+        # fig.update_xaxes(type="date", tickformat="%H:%M %b %d %Y")
+        # fig.update_traces(marker=dict(size=6,
+        #                               symbol=dflog['symbol'],
+        #                   line=dict(width=2,
+        #                   color='DarkSlateGrey')))
+        # fig.layout.yaxis.fixedrange = True
+        return fig
+
+
+
+
+def secondary_y(fig1, fig2, title = 'legend'):
+    # place 2 figures on the same plot with secondary y-axis
+
+    title1 = fig1.layout.yaxis.title.text 
+    title2 = fig2.layout.yaxis.title.text 
+    titlex = fig1.layout.xaxis.title.text 
+    fig = make_subplots(specs=[[{"secondary_y": True}]], )
+
+    for t in fig1.select_traces():
+        t.name = title1    # important  
+        t.legendgroup = title1
+        t.showlegend = True
+        fig.add_trace(t, secondary_y = False)
+
+    # add traces from plotly express figure to first figure
+    for t in fig2.select_traces():
+        t.name = title2    # important
+        t.legendgroup = title2
+        t.showlegend = True
+        fig.add_trace(t, secondary_y = True)
+        
+    # fix layout
+    fig = fig.update_layout(title = title, 
+                      showlegend=True,
+                      xaxis=dict(title=titlex),  
+                      yaxis=dict(title=title1),  
+                      yaxis2=dict(title=title2, overlaying='y', side='right'),  
+                     )
+
+    return fig
+
+
+post_script = r"""
+const graph = document.getElementById('{plot_id}');
+const copyToast = document.createElement("div");
+copyToast.textContent = "Copied to clipboard";
+Object.assign(copyToast.style, {
+    position: "fixed",
+    right: "20px",
+    bottom: "20px",
+    padding: "8px 12px",
+    color: "white",
+    background: "#333",
+    borderRadius: "4px",
+    font: "14px sans-serif",
+    opacity: "0",
+    transition: "opacity 150ms",
+    pointerEvents: "none",
+    zIndex: "9999"
+});
+document.body.appendChild(copyToast);
+let copyToastTimer;
+
+function showCopyToast() {
+    copyToast.style.opacity = "1";
+    clearTimeout(copyToastTimer);
+    copyToastTimer = setTimeout(() => copyToast.style.opacity = "0", 1600);
+}
+
+function valueFor(token, point) {
+    const customMatch = token.match(/^customdata\[(\d+)\]$/);
+    if (customMatch) {
+        return (point.customdata || [])[Number(customMatch[1])];
+    }
+
+    // Handles x, y, z, and simple point properties.
+    return token.split(".").reduce((value, key) => value?.[key], point);
+}
+
+graph.on("plotly_click", async (event) => {
+    const point = event.points[0];
+    const template = point.fullData?.hovertemplate
+        || point.data?.hovertemplate
+        || "";
+
+    const jsonData = {};
+
+    template
+        .replace(/<extra>[\s\S]*?<\/extra>/gi, "")
+        .split(/<br\s*\/?>/i)
+        .forEach((line) => {
+            const cleanLine = line.replace(/<[^>]*>/g, "").trim();
+            const separator = cleanLine.indexOf("=");
+            if (separator < 0) return;
+
+            const label = cleanLine.slice(0, separator).trim();
+            const expression = cleanLine.slice(separator + 1).trim();
+            const tokenMatch = expression.match(/^%\{([^}:|]+)(?:[:|][^}]*)?\}$/);
+
+            jsonData[label] = tokenMatch
+                ? valueFor(tokenMatch[1], point)
+                : expression;
+        });
+
+    const text = JSON.stringify(jsonData, null, 2);
+
+    try {
+        await navigator.clipboard.writeText(text);
+        showCopyToast();
+        console.info("Copied point JSON:", text);
+    } catch (error) {
+        console.error("Clipboard copy failed:", error, text);
+        alert("Could not access the clipboard. Point JSON was logged in the browser console.");
+    }
+});
+"""
+
+def save_fig(fig, save_path = None, copyable_points=True):
+
+    kw = {
+        "full_html": True,
+        "include_plotlyjs": True,
+        "post_script": post_script
+        } if copyable_points else {}
+
+    if save_path is not None:
+        
+        fig.write_html(save_path, auto_play = False, **kw )
+
+    else:
+        fig.show()
+
+
+def add_plot(multiplt: go.Figure, plot: go.Figure, row, col, secondary_y=False):
+
+    yaxisTitle = plot.layout.yaxis.title.text
+
+    for trace in plot.data:
+        trace.legendgroup = yaxisTitle
+        trace.showlegend = True
+
+        multiplt.add_trace(trace, row=row, col=col, secondary_y=secondary_y)
+
+    # add_trace does not update axes for some reason. have to it myself
+    mpyx = list(multiplt.select_yaxes(row=row, col=col, secondary_y=secondary_y))[0]
+    pltyx = list(plot.select_yaxes())[0]
+    spec = {k:v for k,v in pltyx._props.items() if k not in mpyx._props}
+    multiplt.update_yaxes(spec, row=row, col=col, secondary_y=secondary_y)
+
+    mpxx = list(multiplt.select_xaxes(row=row, col=col, ))[0]
+    pltxx = list(plot.select_xaxes())[0]
+    spec = {k:v for k,v in pltxx._props.items() if k not in mpxx._props}
+    multiplt.update_xaxes(spec, row=row, col=col)
+
+    for f in plot.select_shapes():
+        multiplt.add_shape(f, row=row, col=col)
+
+    return multiplt
+
+
+
+def Shape(**kwargs):
+    if 'R' in kwargs and 'T' in kwargs:
+        X, Y = pol2cart(R, T)
+
+    elif 'X' in kwargs and 'Y' in kwargs:
+        X = kwargs['X']
+        Y = kwargs['Y']
+        R,T = cart2pol(X,Y)
+    else:
+        raise ValueError("Shape function requires either 'R' and 'T' or 'X' and 'Y' keyword arguments.")
+
+    Rmax = np.max(R) 
+    mode='lines'
+    fig = px.line(x=X, y=Y, render_mode='SVG')
+    fig.update_layout(width=500 , height = 500, 
+                      yaxis_range = [-Rmax, Rmax], 
+                      xaxis_range = [-Rmax, Rmax])
+    fig.show()
+
+
+# Use a clean dataframe and keep only the fields you want
+# source_df = logdf.copy()#.reset_index( names='eventId')
+
+# Build a visible row payload for every point
+# fields = ["time", "y", "type", "message", "case_signature", "case_index", 'eventId']
+# payload = source_df[fields].copy()
+
+# Make the plot with customdata attached to each point
+# fig = px.scatter(
+#     source_df,
+#     x="time",
+#     y="y",
+#     color="type",
+#     hover_data=["message", "case_signature", "case_index"],
+#     custom_data= [list(source_df.index)],
+#     title="Log data",
+#     labels={"value": "Value", "time": "Time (s)", "type": "Type"},
+#     color_discrete_map=log_cmap,
+#     render_mode='SVG'
+# )
+
+def make_selector(fig, source_df):
+    # fig.layout.yaxis.fixedrange = True
+    fig.update_xaxes(type="date", tickformat="%H:%M \n %b %d %Y")
+    fig_w = go.FigureWidget(fig,
+                            layout=widgets.Layout(width="70%", 
+                                                  height="500px",
+                                                #   display="flex",
+                                                #   flex_flow="row"
+                                                  ))
+
+    # fig_w.update_xaxes(type="date", tickformat="%H:%M %b %d %Y")
+
+    copy_btn = widgets.Button(
+        description="Copy to clipboard",
+                layout=widgets.Layout(
+                    width="90%",
+                    display="flex",
+                    flex_flow="col")
+    )
+
+    selected_box = widgets.Textarea(
+        value="",
+        placeholder="Click a point on the plot...",
+        layout=widgets.Layout(
+                    width="90%",
+                    height="100%",
+                    display="flex",
+                    flex_flow="col"),
+        white_space="pre",
+        overflow="auto"
+        # description="Selected point:",
+        # description_display='initial'
+    )
+
+    def on_point_click(trace, points, selector):
+        if len(points.point_inds) == 0:
+            return
+        # display(trace, points, selector)
+        # This is the real clicked point payload from the trace
+        pid = points.point_inds[0],
+        pt = trace['customdata'][pid]
+        evId = pt[0]
+
+        row = dict(source_df.loc[evId,:])
+        selected_box.value = json.dumps(row, default=str, indent=2)
+
+
+    for tr in fig_w.data:
+        tr.on_click(on_point_click)
+
+    def copy_click(_):
+        val = selected_box.value
+        if not val:
+            return
+        display(Javascript(f"""
+            navigator.clipboard.writeText({json.dumps(val)});
+        """))
+
+    copy_btn.on_click(copy_click)
+
+    return widgets.HBox([
+                fig_w,
+                widgets.VBox([copy_btn, selected_box ],
+                            layout=widgets.Layout(
+                                width="30%",))],
+                layout=widgets.Layout(
+                    width="1500px",
+                    display="flex",
+                    flex_flow="row"))
+

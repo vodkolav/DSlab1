@@ -1,0 +1,257 @@
+import numpy as np
+
+from scipy.interpolate import RBFInterpolator , CubicSpline
+from sklearn.mixture import GaussianMixture
+
+NPERRSTATE = 'warn' # 'ignore' # 'warn' # 'raise' # 'log' # 'print' # 'call'
+
+def cart2pol(x, y):
+    rho = np.sqrt(x**2 + y**2)
+    phi = np.arctan2(y, x)
+    return(rho, phi)
+
+def pol2cart(rho, phi):
+    x = rho * np.cos(phi)
+    y = rho * np.sin(phi)
+    return(x, y)
+
+def magn(x, y):
+    # magnitude of vector
+    return np.sqrt(x**2 + y**2)
+
+def Magn(xy):
+    """Magnitude of the vector in 2D form
+
+    Args:
+        xy (np.array): 
+
+    Returns:
+        _type_: _description_
+    """
+    return np.sqrt(np.sum(xy**2,axis=1))
+
+def rad2deg(rad):
+    # convert radians to degrees
+    return rad * 180 / np.pi
+
+def deg2rad(deg):
+    # convert radians to degrees
+    return deg * np.pi / 180
+
+def circumference(XY):
+    with np.errstate(divide=NPERRSTATE, invalid=NPERRSTATE):
+        dxy = np.diff(XY, axis=0)
+        # dy = np.diff(Y)
+    dxdy = Magn(dxy)
+    C = np.sum(dxdy)
+    return C 
+
+
+
+def normals(XY):
+
+    # Calculates normals of the curve (assumes the curve is closed)
+
+    tail = 2
+    # Add some samples from opposite ends, 
+    # so that XY appear circular to gradient
+    XYc = np.concatenate([XY[-tail:,:], XY, XY[:tail,:]])
+
+
+    G = np.gradient(XYc,axis=0)
+    G = G[tail:-tail, :]
+
+    #Check if any gradients got inf or nan
+    #assert sum(np.isnan(Gy)) == 0
+
+    # Calculate normals
+    L = Magn(G)
+
+    # Nx, Ny = -Gy/L, Gx/L 
+    one = np.array([-1,1])
+    with np.errstate(divide=NPERRSTATE, invalid=NPERRSTATE):
+        LLL = np.outer(1/L,one)
+        N = G[:,::-1] * LLL
+
+    # Ensure all normal vectors point in the same 
+    # direction (Relative to origin) 
+
+    dp = np.sum(XY * N, axis=1)
+
+    scaling_factor_S = np.sign(dp)
+
+    S_reshaped = scaling_factor_S[:, np.newaxis]
+
+    N_consistent = N * S_reshaped
+    return N_consistent
+
+
+def segments(XY):
+    Ends = np.concatenate((XY[1:,:],XY[:1,:]), axis=0) # segment end points 
+    return Ends - XY # segment direction vectors
+
+
+def bimodal_means(M):
+    """
+    Fit a bimodal Gaussian mixture to the data and return the means of the two components.
+    """
+    X = M[~np.isnan(M)].reshape(-1, 1)
+    
+    gm = GaussianMixture(n_components=2, random_state=0)
+    gm.fit(X)
+    return gm.means_
+
+
+def intersections(c0, v0, c_block, v_block):
+    C = c_block - c0
+
+        # denominators
+    den = np.cross(v0, v_block)
+
+        # numerators
+    num_ti = np.cross(C, v_block)
+
+    num_tj = np.cross(C, v0)
+
+    with np.errstate(divide=NPERRSTATE, invalid=NPERRSTATE):
+        ti = num_ti / den
+        tj = num_tj / den
+
+    valid = den != 0
+    return ti,tj,valid
+
+# rarefactions: 
+def rarefactions(m, d, q = .95):
+
+    quantiles = np.sum(m[:, None] > m, axis=1) / (len(m) - 1)
+    # only take the points in the top 5% of segment lengths, e.g points that diverged the most
+    divergents = (m > d) & (quantiles > q) 
+
+    return divergents
+
+def cslice(start, stop, n):
+    """circular slice. like a clock
+
+    Args:
+        n (int): total amt of items in circular array
+        start (int): start position of slice
+        stop (int): stop position of slice
+
+    Returns:
+        list: indices to extract
+    """
+    res = np.arange(start, stop) % n
+    return res
+
+# Convert between Cartesian/Polar coordinates
+
+def arc_lens(X,Y):
+    """
+    Calculate lengths of curve segments defined by points (X,Y).
+
+    Args:
+        X (_type_): _description_
+        Y (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
+
+    XY = np.stack((X,Y), axis=1)
+    XY = np.concatenate((XY,XY[0:1,:]), axis=0)
+
+    diff = np.diff(XY, axis=0)
+    Lens = np.sqrt(np.sum(diff ** 2, axis=1))
+    return Lens
+
+
+def interp(XY,xy):
+    if XY[0,0]>XY[-1,0]:
+        XY = XY[::-1,:]
+
+    XX = XY[:,0,None]
+    YY = XY[:,1]
+
+    x = xy[:,0,None]
+    model = RBFInterpolator(XX, YY)
+    y = model(x)
+    
+    xy = np.stack([x[:,0],y],axis=1)
+
+    return xy
+
+
+def interp_parametric(xy_vicinity, t_vicinity, t_new):
+    """
+    Interpolates a local chord of a curve to fill gaps.
+    xy_vicinity: array of x,y coordinates of existing points in the vicinity of the gap
+    t_vicinity: cumulative chord length parameter which x, y depend on ( x = f(t), y = g(t))
+    t_new: values of t where to generate new x,y from interpolation.
+    """
+
+    spline = CubicSpline(t_vicinity, xy_vicinity, bc_type='natural')
+
+    interpolated_points = spline(t_new)
+
+    return interpolated_points
+
+
+def slerp(v1, v2, d):
+    """
+    Interpolate between two 2D vectors with points spaced along the circular arc.
+
+    Parameters
+    ----------
+    v1, v2 : array_like, shape (2,)
+        Vectors from the same origin and with the same length.
+    d : float
+        Maximum allowed arc length between adjacent returned points.
+
+    Returns
+    -------
+    np.ndarray
+        Array of shape (k, 2) containing the intermediate points between v1 and v2.
+        If d is larger than the arc length, an empty array is returned.
+    """
+    v1 = np.asarray(v1, dtype=float).reshape(-1)
+    v2 = np.asarray(v2, dtype=float).reshape(-1)
+
+    if v1.shape != (2,) or v2.shape != (2,):
+        raise ValueError("v1 and v2 must each be 2D vectors")
+    if d <= 0:
+        raise ValueError("d must be positive")
+
+    r1 = np.linalg.norm(v1)
+    r2 = np.linalg.norm(v2)
+    if np.isclose(r1, 0.0) or np.isclose(r2, 0.0):
+        raise ValueError("v1 and v2 must be non-zero vectors")
+    # if not np.isclose(r1, r2):
+    #     raise ValueError("v1 and v2 must have the same length")
+
+    u1 = v1 / r1
+    u2 = v2 / r2
+
+    # Signed angle from v1 to v2 (counter-clockwise if positive)
+    theta = np.arctan2(u1[0] * u2[1] - u1[1] * u2[0], np.dot(u1, u2))
+    if np.isclose(theta, 0.0):
+        return np.empty((0, 2), dtype=float)
+
+    arc_len = r1 * abs(theta)
+    if d > arc_len:
+        return np.empty((0, 2), dtype=float)
+
+    n_segments = max(1, int(np.ceil(arc_len / d)))
+    t = np.linspace(0.0, 1.0, n_segments + 1)[1:-1]
+    if t.size == 0:
+        return np.empty((0, 2), dtype=float)
+
+    angles = theta * t
+    c = np.cos(angles)
+    s = np.sin(angles)
+
+    points = np.column_stack((
+        c * u1[0] - s * u1[1],
+        s * u1[0] + c * u1[1],
+    )) * r1
+
+    return points

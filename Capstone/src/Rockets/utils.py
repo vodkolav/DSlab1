@@ -1,0 +1,112 @@
+
+
+
+isSubscriptable = lambda obj: hasattr(obj, '__getitem__')
+
+def shape(item):
+    if hasattr(item, '__getitem__'):
+        if hasattr(item, 'shape'):
+            return item.shape
+        else:
+            if hasattr(item, '__len__'):
+                return len(item)
+            else:
+                raise ValueError("Item has __getitem__ but no shape or length.")
+    else:
+        return item
+
+def describe(subst):
+    print("Better use describe from Benckmarking package")
+    fmt = "{n} {s}: {t}"
+    summ = [fmt.format(n=k, t=type(v), s= shape(v) ) for k,v in subst.items() ]
+    print(*summ, sep='\n', end = "\n\n")
+
+
+def clip(vars, indcs = slice(None)):
+
+    rooster = vars.split(", ")
+    #print(rooster)
+    thevars = {k: globals()[k] for k in rooster}
+
+    subst = {k: v[indcs] if isSubscriptable(v) else v  for k, v in thevars.items()}
+    describe(subst)
+    return subst
+
+def pick(dt):
+    fields = "I, step, X, Y, Nx, Ny, circ".split(', ')
+    toplot = {f: dt[f] for f in fields}
+    return toplot
+
+
+def trynumeric(val):
+    try:
+        r = float(val)
+    except:
+        return val
+    return float(val)
+
+
+def  parse_sf_params(fn):
+    """Parse sf parameters from saved graph filename, which usually looks like:
+    fn = "superformula_funcname=risingsun_m=5_a=1_b=1_n_1=5.01_n_2=100_n_3=100_20260427_123859.png"
+ 
+    Args:
+        fn (string): the filename to parse
+
+    Returns:
+        dict: dictionary of parameters extracted from the filename
+    """
+    import re
+    fn = fn.replace("_", " ")
+    fn = re.sub("([a-z]) (\\d)=", "\\1_\\2=", fn )
+    j = fn.split(" ")
+    k = [i.split("=") for i in j if "=" in i]
+    l = {i[0]: trynumeric(i[1]) for i in k}
+    return l 
+
+
+def reimport_function(func):
+    import importlib
+    fname = func.__name__
+    modl = importlib.import_module(func.__module__)
+    modl = importlib.reload(modl)
+    newfunc = getattr(modl, fname)
+    if func.__code__ != newfunc.__code__:
+        print(f"Function '{fname}' has been reloaded.")
+    else:
+        print(f"Function '{fname}' has not changed.") 
+    return newfunc
+
+
+def trypop(obj: dict, key, default=None):
+    """pop item from dict id it exists. if not, return default
+        (Why does it not exist already in dict?)
+
+    Args:
+        obj (dict): _description_
+        key (_type_): _description_
+        default (_type_, optional): _description_. Defaults to None.
+
+    Returns:
+        _type_: _description_
+    """
+    if key in obj.keys():
+        return obj.pop(key)
+    else: 
+        return default
+
+
+def ia(obj):
+    """idempotent list/aray
+        ensures obj is of type list. if not - encloses in a list.
+
+    Args:
+        obj (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
+    res = obj if isinstance(obj,list) else [obj]
+    return res
+
+

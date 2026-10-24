@@ -1,0 +1,140 @@
+import warnings
+
+# Ignore all FutureWarnings globally
+warnings.filterwarnings("ignore", category=FutureWarning)
+
+from pathlib import Path
+import os
+from copy import deepcopy
+
+from Rockets.Simulation.Pipelines import SimPipeline
+from Rockets.utils import parse_sf_params
+from Rockets.Simulation.Plots import preproc_log_data, Log, save_fig
+
+from Benchmarking.Benchmarking import Bench
+from Benchmarking.utils import JQ
+
+print(os.getcwd())
+
+simParams = {
+# "d": .05,
+"steps": 200,
+"n": 800,
+"window_size": 100, 
+"interp":  "interp_parametric" #'manydumb'
+}
+
+PhysicsParams = {
+    'L': 20,
+    'R': 4,
+    'd_{t}': 0.05,
+    'd_{e}': 0.1505,
+    'a': 1.24e-5,
+    'n': 0.4,
+    'rho_{p}': 1600,
+    'C_{v}': 1500,
+    'C_{FO}': 1.6,
+    'gamma': 1.2,
+    'P_{a}': 101325,
+    'R_{P}': 1/70,
+}
+
+
+dataroot = "/home/michael/Studies/DSlab/Capstone/data/"
+
+dest = dataroot + "data/Generated-dbg/"
+
+
+patt = "*"
+path = Path(dataroot + "SFs")
+
+paths = list(path.glob(patt +".png"))
+
+tracks = {
+    # "episodes": {
+    #     "func_name": "step", 
+    #     "summary_func": "step_summary",
+    #     "sampling_type": "interval_episodes",
+    #     "sampling_value": 1},
+    "harvest": {
+        "curves": {
+            "func_name": "dump_curves", 
+            "varnames": ["self.I", "self.XY", "self.A", "self.B", "F",
+                         "self.SimStep", "self.N", "E", "self.d"],
+            "on_size_mismatch": "error"}
+            ,
+        "curves1": {
+                "func_name": "dump_curves1", 
+                "varnames": ["I1", "XY1", "self.SimStep"],
+                "on_size_mismatch": "error"
+            },
+        "intersections": {
+                "func_name": "dump_intersections", 
+                "varnames": ["self.SimStep", 
+                             "i", "j", "ti", "tj", "P", 
+                             "valid", "condi", "condj"],
+                "elems": 'pois'
+                },
+        "simulation": {
+                "func_name": "dump_simulation", 
+                "varnames": ["self.SimStep", "C", "npoints", 
+                            "self.d", "Thrust", "self.Time", "Delta_t" ],
+                "on_size_mismatch": "error"
+        }
+    }
+}
+
+
+cases = [{"config":{
+              "file":
+                  {"path": p.resolve().as_posix() , 
+                   "name": p.name, 
+                   "stem": p.stem}, 
+              "SFparams": parse_sf_params(p.stem),
+              "simulation": simParams,
+              "Physics": PhysicsParams},
+          "ID": 
+              {"case_signature": p.stem},
+          "tracks": deepcopy(tracks)
+          } for p in paths ]
+
+
+bench = Bench(benchmarks_root=dataroot + "benchmarks",
+              output_root= dataroot + "output",
+            #   folder="20260801/1442",
+              onerror = "fail")
+
+bench.np_orient = "horz"
+
+
+#case_template = simppl.case_template()
+#case_template["tracks"].pop('profile')
+
+bench.configure(SimPipeline)
+
+# shortcut to run just a specific case
+# cid = "funcname=superformula m=3 a=2 b=1 n_1=1 n_2=1 "
+# filter_query = f"""
+# map(select(.config.file.stem | startswith("{cid}")))
+# """
+# cases = JQ(cases, filter_query)
+
+bench.set_cases(cases) # res) 
+# bench.unfurl_grid(case_template, chosengrid)
+
+bench.run_experiments()
+
+Experiment_Log = bench.TrackWithID('log')
+    
+logdf, log_cmap = preproc_log_data(Experiment_Log)
+
+
+before = logdf.shape
+logdf = logdf.drop_duplicates('time', keep = 'last')
+if logdf.shape != before:
+    bench.TELE.warning("Experiment Log has duplicate records", "shape before:", before, "shape after:", logdf.shape)
+
+
+L = Log(logdf, log_cmap, hover_data = ['message','traceback'],  render_mode = 'SVG')
+
+save_fig(L, save_path = bench.output_folder +  "/Log.html")

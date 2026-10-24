@@ -1,0 +1,84 @@
+
+
+from Rockets.Simulation.Plots import WebAndPerf, save_fig
+from Rockets.Simulation.Simulation import Lagrangian, Physics
+from Rockets.Superformula.Formulas import formula1, formula2
+from Rockets.utils import describe, clip, shape, pick
+
+from Benchmarking.Pipeline import Pipeline
+from Benchmarking.telemetry_manager import TelemetryManager
+
+class SimPipeline(Pipeline):
+
+    def __init__(self):
+
+        # Order of initializers matters, as some depend on others.
+        # If a parameter changes, all downstream initializers must re-run.
+        # * since Python 3.7 dicts preserve insertion order
+        self.initializers = {
+                ".config.Physics": self.init_physics,
+                ".config.SFparams": self.init_sim,
+            }
+        self.simResult = []
+
+    @property
+    def case_config(self):
+        return self.tele.CAse.config # TODO: make it a property in base class? 
+
+
+    @property
+    def case_file(self):
+        raise NotImplemented
+        return 
+
+
+    def set_telemetry(self, tele: TelemetryManager):
+        #TODO: check if tele can just be passed to __init__ on creation of pipeline
+        # or do we require a separate set_telemetry step? 
+
+        self.tele = tele
+        
+        # pth = ".tracks.resources"
+        # conf = get_path(pth, self.case_template())
+        # at this point case is not yet initialized, so we use default config from case_template
+        # self.tele.AttachSensor(self, "execute", pth, config = conf)
+
+
+    def init_physics(self, new_case):
+        pth = "Capstone/src/Rockets/Simulation/assets/Physics.canvas"
+        self.physics = Physics(pth, overrides=new_case.config["Physics"])
+
+
+    def init_sim(self, new_case):
+
+        # when this func runs, the self.tele.CAse is not yet updated to the new case, 
+        # so we can't use it to get the config for the new case.
+        # we have to use the new_case argument instead, which is passed to this func by the pipeline.
+
+        self.profile = formula1(**new_case.config["SFparams"])
+
+        self.SIM = Lagrangian(self.profile, self.physics, **new_case.config["simulation"])
+
+        return self.SIM
+
+    def run_case(self, ):
+        self.simResult = self.SIM.run(self.case_config["simulation"]["steps"])
+
+        self.tele.print("Simulation completed.")
+
+
+    def post_case(self):
+        # optional.
+        # runs after each case is completed, and after telemetry has collected all data for the case.
+        # can be used to generate plots, summaries, etc. based on the collected telemetry data.
+
+        case_file = self.tele.CAse.case_filename(field='case_signature')
+
+        WaP = WebAndPerf(self.tele.CAse)
+
+        save_fig(WaP,save_path= case_file + ".html")
+
+
+    def results(self):
+        return self.simResult
+
