@@ -1,0 +1,108 @@
+### burnbackpftemplate.edp  
+
+// Finite element solution of phase-field eikonal equation
+IMPORT "io.edp"
+
+DEFAULT (CPF, 1e4)
+DEFAULT (NMO, 100)
+DEFAULT (NMI, 50)
+DEFAULT (RO, 1.0)
+DEFAULT (RI, 0.1)
+
+real Ro = $RO;
+real Ri = $RI;
+
+border C1(t=0,2*pi){x=Ro*cos(t); y=Ro*sin(t); label=1;}
+border C2(t=0,2*pi){x=Ri*cos(t); y=Ri*sin(t); label=2;}
+mesh Th = buildmesh(C1($NMO) + C2(-$NMI));
+plot(Th, wait=1);
+
+// Variables
+real v = 1.0;
+real alfa = 0.1;
+real C = $CPF;
+int nitr = 10;
+int skip = 1;
+
+int hole = 2;
+
+// Superformula implementation
+int m = $M;
+real a = $A;
+real b = $B;
+real n1 = $N1;
+real n2 = $N2;
+real n3 = $N3;
+
+
+
+func real rsf(real theta) {
+	real r = pow((
+			pow(abs(cos(m*theta/4.0)/a), n2) +
+			pow(abs(sin(m*theta/4.0)/b), n3)
+	)
+	,
+	-1.0/n1
+); 
+	return r;
+}
+
+func real phirsf(real x, real y) {
+	real r = sqrt(x*x + y*y);
+_real theta = atan2(y, x);
+_real rc = rsf(theta);
+	if (r < rc) {
+		return 0.0;
+	}
+	else {
+		return 1.0;
+	}
+}
+
+// Function spaces
+fespace Vh(Th, P1);
+Vh S = 0; // Solution iterates
+Vh dS; // Solution update
+Vh res; // Residue for NR iterations
+Vh phi = phirsf(x, y); // Initialize phase field
+	according to superformula
+
+// Variational forms
+varf tangentEikonal(uh, wh) =
+	int2d(Th)(
+			2*v*v * phi * (dx(uh)*dx(S) + dy(uh)*dy(S))
+			* wh
+			+ (alfa + C*(1 - phi)^2) * (dx(uh)*dx(wh) +
+			dy(uh)*dy(wh))
+			- 2*C*(1 - phi) * (dx(phi)*dx(uh) + dy(phi)*
+			dy(uh)) * wh
+	)
+	+ on(hole, uh = 0)
+	;
+
+
+
+varf residueEikonal(uh, wh) =
+    int2d(Th)(
+        phi * (1 - v*v*(dx(S)*dx(S) + dy(S)*dy(S))) *
+            wh
+        - (alfa + C*(1 - phi)^2) * (dx(S)*dx(wh) + dy(S
+         )*dy(wh))
+        + 2*C*(1 - phi) * (dx(phi)*dx(S) + dy(phi)*dy(S
+         )) * wh
+    )
+    + on(hole, uh = 0)
+    ;
+
+// Newton-Raphson iterations
+for (int i = 0; i < nitr; i++) {
+    matrix K = tangentEikonal(Vh, Vh);
+    res[] = residueEikonal(0, Vh);
+    dS[] = K^-1 * res[];
+    S[] += dS[];
+}
+
+exportMesh(Th);
+exportArray(S[]);
+
+
