@@ -397,7 +397,7 @@ class Lagrangian:
 
         self.Time = 0
 
-        for self.SimStep in range(steps):
+        for self.SimStep in range(steps+1):
 
             res = self.step(self.I, self.XY, self.A )
 
@@ -410,6 +410,9 @@ class Lagrangian:
             if sum(self.A) == 0:
                 self.tele.print("everything's burnt")
                 break
+
+        if self.SimStep == steps:
+            self.tele.warning(f"Max steps ({steps}) reached. The simulation might be incomplete!")
 
         #TODO return the performance curve. think more on representation
         return self.case_summary()

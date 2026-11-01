@@ -4,9 +4,10 @@ import plotly.graph_objects as go
 import plotly
 import numpy as np
 
-from Rockets.Superformula.Formulas import formula1, formula2
+from Rockets.Superformula.Formulas import formula1, formula2, formula3
 from Rockets.Superformula.Signature import analyze_function, dec_scale_2, exp_scale, to_si
 from Rockets.Geometry import pol2cart
+from Rockets.Simulation.Plots import casing
 
 from dash import dcc
 from dash.dependencies import Input, Output
@@ -63,7 +64,7 @@ class DashboardManager:
     def draw(self, formula, mode='lines'):
         
         R = formula(T)
-        Rmax = np.max(R) # makes plot ranges invariant to rotations
+        Rmax = 5.5 # np.max(R)*1.1 # makes plot ranges invariant to rotations
         X, Y = pol2cart(R, T)
         fig = make_subplots(subplot_titles=('Y vs X', 'R vs T' ),
                             horizontal_spacing=0.1, vertical_spacing=0.1,
@@ -74,7 +75,10 @@ class DashboardManager:
 
         fig.update_yaxes(title_text='Y', row=1, col=1, scaleanchor = 'x', scaleratio=1)
 
-        fig.update_layout(yaxis_range = [-Rmax, Rmax], xaxis_range = [-Rmax, Rmax], **self.conf("layout"))
+        fig.update_layout(yaxis_range = [-Rmax, Rmax], 
+                          xaxis_range = [-Rmax, Rmax], 
+                          shapes=[casing(1), casing(2), casing(3), casing(4),casing(5)], 
+                          **self.conf("layout"))
         return fig
 
 
@@ -110,12 +114,14 @@ class DashboardManager:
             inpt = Input(f'dropdown-{Name}', 'value')
 
         elif Scl == "Exp":
-            ax, vl = exp_scale(Min,Max,20)
+            ax, vl = exp_scale(Min, Step, Max, 20)
             markers = {float(a): to_si(v) for a,v in zip(ax,vl)}
 
             sldr = dcc.Slider(id=f'slider-{Name}', updatemode='mouseup',marks= markers,
                     min=ax[0], max=ax[-1], step=Step, value=Def,
-                    tooltip={"placement": "top", "always_visible": True, "transform": "decScale"})
+                    tooltip={"placement": "top", "always_visible": True 
+                             #, "transform": "decScale"
+                             })
             inpt = Input(f'slider-{Name}', 'value')
         else:
             sldr = dcc.Slider(id=f'slider-{Name}', updatemode='mouseup',

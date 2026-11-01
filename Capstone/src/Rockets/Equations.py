@@ -1,6 +1,6 @@
 from Benchmarking.utils import read_json
 from sympy.parsing.latex import parse_latex
-from sympy import pi, Float, lambdify
+from sympy import pi, Float, lambdify, Expr
 
 import pandas as pd
 import io
@@ -83,7 +83,16 @@ class EquationsManager:
         return self.Formulas.loc[self.Formulas.Param == name,  "expr"].values[0]
 
 
-    def substitute(self, expression):
+    def substitute(self, expression: Expr, consts = True):
+        """Substitute all expressions recursively to get the final formula
+
+        Args:
+            expression (Expr): the starting sympy expression
+            consts (bool, optional): whether to substitute constants. False to see the full substituted expression. Defaults to True.
+
+        Returns:
+            _type_: _description_
+        """
 
         if expression.is_Equality:
             erhsfs = {sym.name for sym in expression.rhs.free_symbols}
@@ -93,9 +102,9 @@ class EquationsManager:
         if any(erhsfs):
             
             subst = {k:v  for k,v in self.replacements.items() if k in erhsfs}
-            subst = {k:self.substitute(v) for k,v in subst.items()}
+            subst = {k:self.substitute(v, consts) for k,v in subst.items() if consts ** v.is_Number }
             subst
-            expression = expression.subs(subst)
+            expression = expression.subs(subst, simultaneous=True)
             expression = expression.rhs if expression.is_Equality else expression
         return expression.simplify()
 

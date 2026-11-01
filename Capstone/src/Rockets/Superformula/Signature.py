@@ -78,27 +78,35 @@ def dec_scale_2(min,max,step):
     return ass, bss
 
 
-def exp_scale(mn, mx, num):
+def exp_scale(min, mid, max, num):
     """Produces an exponentially scaled axis for the slider control.
         When you need to control a variable with possible values in a wide range of orders of magnitude.
         e.g.  0.0001 < x < 10000
 
     Args:
-        mn (float): minimal value of the scale. also defines minimal order of magnitude 
-        mx (float): maximal value of the scale. also defines maximal order of magnitude
+        min (float): minimal value of the scale. also defines maximal order of magnitude in negative direction
+        mid (float): defines minimal order of magnitude in both directions
+        max (float): maximal value of the scale. also defines maximal order of magnitude in positive direction
         num (int): the amount of marks to produce
+        
 
     Returns:
         float, float: ax - the linear values for the slider; val - the exponential values for the parameter
     """
-    s = np.sign(mn)
-    lmin = np.log10(np.abs(mn)) if mn != 0 else 0
-    lmax = np.log10(np.abs(mx)) if mx != 0 else 0
-    ax, stp = np.linspace(s * lmin, lmax, num=num, retstep=True)
-    sg = np.sign(ax)
-    # val = sg * (10 ** np.abs(ax))
-    val = 10 ** ax
-    return ax, val
+    assert(min < mid < max)
+    assert(min <  0  < max)
+    a = np.array([min, mid, max])
+    num = int(num/2)
+    smin, smid, smax = np.sign(a)
+    lmin, lmid, lmax = np.log10(np.abs(a))#if a != 0 else 0
+    axmin = np.linspace( lmin, lmid, num=num+1)[:-1]
+    axmax = np.linspace( lmid, lmax, num=num+1)[1:]
+    valmin = smin * 10 ** axmin
+    valmax = smax * 10 ** axmax
+    val = np.concat([valmin,valmax])
+    ax  = np.concat([-axmin - (-lmid), -lmid + axmax])
+    # lbl = np.concat([np.zeros_like(valmin), np.ones_like(valmax)]).astype(bool)
+    return ax, val#, lbl
 
 
 def to_si(val, precision=2):

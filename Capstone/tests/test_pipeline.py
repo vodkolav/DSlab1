@@ -18,7 +18,7 @@ print(os.getcwd())
 
 simParams = {
 # "d": .05,
-"steps": 200,
+"steps": 500,
 "n": 800,
 "window_size": 100, 
 "interp":  "interp_parametric" #'manydumb'

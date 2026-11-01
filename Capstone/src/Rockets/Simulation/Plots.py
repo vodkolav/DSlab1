@@ -23,19 +23,12 @@ def dots_and_arrows(dfC, color_map, dfI, **kwargs):
     Nx, Ny = dfC.Ex - dfC.X, dfC.Ey - dfC.Y
 
     fig = ff.create_quiver(x=dfC.X, y=dfC.Y, u=Nx, v=Ny, 
-                           name='offset',
+                           name='Propagation',
                            hoverinfo = 'text',
                            hovertext=dfC.hovertext, 
-                           scale=1, arrow_scale=.05)
+                           scale=1, arrow_scale=.09)
 
-    fig.add_trace(go.Scatter(x=dfI.Px, y=dfI.Py,
-                             name='intersections',
-                             hovertext = dfI.hovertext,
-                             marker=dict(size=6,
-                                         color = dfI.clas, 
-                                         symbol = 'x'),
-                             mode='markers',
-                             ))
+
     
     # Seg = ff.create_quiver(x=dfC.X, y=dfC.Y, u=dfC.Sx, v=dfC.Sy, 
     #                     #    line=dict(color='red'), 
@@ -47,31 +40,38 @@ def dots_and_arrows(dfC, color_map, dfI, **kwargs):
     # fig.add_traces(Seg)
 
     fig.add_trace(go.Scatter(x=dfC.X, y=dfC.Y,
-                             name='XY',
+                             name='$X_n$',
                              hovertext=dfC.I,
-                             marker=dict(
-                                        size=4),
-                            # color=dfC.statCol,
+                            #  line=dict(color=dfC.StepMod10Color),
                              mode='lines' 
                             ))
 
     fig.add_trace(go.Scatter(x=dfC.Ex, y=dfC.Ey, 
-                             name='ExEy-line',
+                             name='$X_n\'$',
                              mode='lines',
                              hovertext=dfC.hovertext,
                              ))
 
     fig.add_trace(go.Scatter(x=dfC.Ex, y=dfC.Ey, 
-                             name='ExEy',
+                             name='$X_n\' points$',
                              hovertext=dfC.hovertext,
                              marker=dict(size=4,
                                          color=dfC.statCol), 
                              mode='markers',
                              ))
 
+    fig.add_trace(go.Scatter(x=dfI.Px, y=dfI.Py,
+                            name='intersections',
+                            hovertext = dfI.hovertext,
+                            marker=dict(size=20,
+                                        color = dfI.clas, 
+                                        symbol = 'circle-cross-open'),
+                            mode='markers',
+                            ))
+
     # fig.update_layout(shapes = [casing(SIM.hr)])
 
-    fig.update_layout(width=800, height=800)
+    # fig.update_layout(width=400, height=400)
 
     if lockscale:
         fig.update_yaxes(scaleanchor="x", scaleratio=1)
@@ -205,6 +205,16 @@ def from_md(txt: str):
     mapping.index = mapping.index.astype(int)
     return mapping
 
+SimStepMod10Colormap = {'0': '#636efa',
+ '1': '#ef553b',
+ '2': '#00cc96',
+ '3': '#ab63fa',
+ '4': '#ffa15a',
+ '5': '#19d3f3',
+ '6': '#ff6692',
+ '7': '#b6e880',
+ '8': '#ff97ff',
+ '9': '#fecb52'}
 
 ColorMappingMD = """
 |    Hex  | clr | F    | B    | E    |  desc        | stt |
@@ -241,6 +251,8 @@ def preproc_curves_data(HScurves, dopad = False, **kwargs):
     sm10 = (HScurves['SimStep']%10)
 
     HScurves['StepMod10'] = sm10.astype(str)
+
+    HScurves['StepMod10Color'] = HScurves['StepMod10'].map(SimStepMod10Colormap)    
     
     HScurves['Imod10'] = (HScurves['I']%10).astype(str)
 
@@ -652,6 +664,7 @@ def save_fig(fig, save_path = None, copyable_points=True):
     kw = {
         "full_html": True,
         "include_plotlyjs": True,
+        "include_mathjax": 'cdn',
         "post_script": post_script
         } if copyable_points else {}
 
@@ -668,8 +681,8 @@ def add_plot(multiplt: go.Figure, plot: go.Figure, row, col, secondary_y=False):
     yaxisTitle = plot.layout.yaxis.title.text
 
     for trace in plot.data:
-        trace.legendgroup = yaxisTitle
-        trace.showlegend = True
+        # trace.legendgroup = yaxisTitle
+        # trace.showlegend = True
 
         multiplt.add_trace(trace, row=row, col=col, secondary_y=secondary_y)
 
