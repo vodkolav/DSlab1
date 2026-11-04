@@ -1,4 +1,4 @@
-### burnbackpftemplate.edp  
+/// burnbackpftemplate.edp  
 
 // Finite element solution of phase-field eikonal equation
 IMPORT "io.edp"
@@ -49,8 +49,8 @@ func real rsf(real theta) {
 
 func real phirsf(real x, real y) {
 	real r = sqrt(x*x + y*y);
-_real theta = atan2(y, x);
-_real rc = rsf(theta);
+	real theta = atan2(y, x);
+	real rc = rsf(theta);
 	if (r < rc) {
 		return 0.0;
 	}
@@ -64,18 +64,14 @@ fespace Vh(Th, P1);
 Vh S = 0; // Solution iterates
 Vh dS; // Solution update
 Vh res; // Residue for NR iterations
-Vh phi = phirsf(x, y); // Initialize phase field
-	according to superformula
+Vh phi = phirsf(x, y); // Initialize phase field according to superformula
 
 // Variational forms
 varf tangentEikonal(uh, wh) =
 	int2d(Th)(
-			2*v*v * phi * (dx(uh)*dx(S) + dy(uh)*dy(S))
-			* wh
-			+ (alfa + C*(1 - phi)^2) * (dx(uh)*dx(wh) +
-			dy(uh)*dy(wh))
-			- 2*C*(1 - phi) * (dx(phi)*dx(uh) + dy(phi)*
-			dy(uh)) * wh
+					   2*v*v * phi * (dx(uh) *dx(S)  + dy(uh)  * dy(S)) * wh
+		+ (alfa + C * (1 - phi)^2) * (dx(uh) *dx(wh) + dy(uh)  * dy(wh)) 
+				   - 2*C*(1 - phi) * (dx(phi)*dx(uh) + dy(phi) * dy(uh)) * wh
 	)
 	+ on(hole, uh = 0)
 	;
@@ -84,12 +80,9 @@ varf tangentEikonal(uh, wh) =
 
 varf residueEikonal(uh, wh) =
     int2d(Th)(
-        phi * (1 - v*v*(dx(S)*dx(S) + dy(S)*dy(S))) *
-            wh
-        - (alfa + C*(1 - phi)^2) * (dx(S)*dx(wh) + dy(S
-         )*dy(wh))
-        + 2*C*(1 - phi) * (dx(phi)*dx(S) + dy(phi)*dy(S
-         )) * wh
+            phi * (1 - v*v * (dx(S)  *dx(S) + dy(S)  *dy(S))) * wh
+        - (alfa + C*(1 - phi)^2) * (dx(S)  *dx(wh)+ dy(S)  *dy(wh))
+                 + 2*C*(1 - phi) * (dx(phi)*dx(S) + dy(phi)*dy(S))  * wh
     )
     + on(hole, uh = 0)
     ;

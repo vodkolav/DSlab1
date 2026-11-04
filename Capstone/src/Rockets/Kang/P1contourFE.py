@@ -156,24 +156,20 @@ def extract_contour_P1(levels, nodes, connectivity, field, plot=False):
 
     for i_elt in range(n_elements):
         id_nodes = connectivity[:, i_elt]
-        x_verts = np.array([
-            nodes[0, k] for k in id_nodes])
-        y_verts = np.array([
-            nodes[1, k] for k in id_nodes])
+        x_verts = np.array([nodes[0, k] for k in id_nodes])
+        y_verts = np.array([nodes[1, k] for k in id_nodes])
         if plot:
             plt.plot(
-                np.hstack((x_verts, np.array([x_verts
-                    [0]]))), 
-                np.hstack((y_verts, np.array([y_verts
-                    [0]]))), 
+                np.hstack((x_verts, np.array([x_verts[0]]))), 
+                np.hstack((y_verts, np.array([y_verts[0]]))), 
                 'k-', lw=0.5
             )
 
         for i, level in enumerate(levels):
-            l, x1, y1, x2, y2 = element_contour_P1(
-                level, field[id_nodes], x_verts,
-                    y_verts
-            )
+            l, x1, y1, x2, y2 = element_contour_P1( level, 
+                                                   field[id_nodes], 
+                                                   x_verts, 
+                                                   y_verts )
             contour_lengths[i] += l
 
             if plot and l > 1e-6:

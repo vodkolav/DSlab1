@@ -19,7 +19,7 @@ def formula1(funcname:str = "superformula",
                 n_2: float = 2,
                 n_3: float = 2,
                 s: float = 0,
-                o: float = 1,
+                o: float = 0,
                 invert: int = 0
                 ):
 

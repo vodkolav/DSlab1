@@ -5,7 +5,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from pyfreefem import FreeFemRunner
-from P1contourFE import extract_contour_P1
+from Rockets.Kang.P1contourFE import extract_contour_P1
 
 A_MIN = 0.1
 A_MAX = 0.8
@@ -36,12 +36,15 @@ MPA = 1e6
 # C_T = 1e5
 C_T = 0
 
+edpscript = "Capstone/src/Rockets/Kang/burnbackpftemplate.edp"
+
+
 def solve_burnback(
     a_sf, b_sf, m_sf, n1_sf, n2_sf, n3_sf,
     nm_o=100, nm_i=100, C_pf=1e8, Ro=1.0, Ri=0.1,
     plot=False
 ):
-    exports = FreeFemRunner("burnback_pf_template.edp").execute({
+    exports = FreeFemRunner(edpscript).execute({
         'M': m_sf,
         'A': a_sf,
         'B': b_sf,
@@ -76,12 +79,13 @@ def solve_burnback(
     return mesh, S
 
 
-def pressure_profile(mesh, S, DT=1e-2, plot=False):
-    rho_p = 1700.0
-    c_star = 1400.0
-    a = 2e-4
-    n = 0.3
-    At = 5e-2
+def pressure_profile(mesh, S, DT=1e-2, plot=False,
+                     rho_p = 1700.0,
+                     c_star = 1400.0,
+                     a = 2e-4,
+                     n = 0.3,
+                     At = 5e-2
+                     ):
 
     n_levels = int(np.max(S)/DT) + 1
     web_vals = np.linspace(0, np.max(S), n_levels)
@@ -93,7 +97,7 @@ def pressure_profile(mesh, S, DT=1e-2, plot=False):
         mesh.vertices[:,:2].T,
         mesh.triangles[:,:3].T - 1,
         S,
-        plot=False
+        plot=plot
     )
 
     Pc_curve[1:] = np.power(

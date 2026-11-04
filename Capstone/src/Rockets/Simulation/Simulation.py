@@ -2,7 +2,7 @@
 import numpy as np
 from Rockets.Geometry import circumference, normals, Magn, cslice, pol2cart,\
                             cart2pol, intersections, slerp, rarefactions, segments,\
-                            interp, interp_parametric, bimodal_means
+                            interp, interp_parametric, bimodal_means, grain
 from Rockets.Equations import EquationsManager
 from Benchmarking.sensors.Harvester import Harvester
 
@@ -55,7 +55,7 @@ class Lagrangian:
         #Variables
         self.SimStep=-1
         self.Time = 0
-        self.I, self.RT, self.XY = self.grain(func, self.n)
+        self.I, self.RT, self.XY = grain(func, self.n)
 
         # segment direction vectors; size: [n,2]
         self.S = segments(self.XY)
@@ -365,20 +365,6 @@ class Lagrangian:
 
     def case_summary(self):
         return "TODO: come up with something"
-
-
-    def grain(self, func, n):
-        T = np.linspace(0, np.pi*2, n, endpoint=False) + 0.0001
-        # T = np.append(T, T[:1])
-        I = np.arange(len(T))
-        # Calculate Radius for each Theta
-        R = func(T)
-        RT = np.stack((R,T), axis=1)
-
-        X, Y = pol2cart(R, T)
-        XY = np.stack((X,Y), axis=1)
-
-        return I, RT, XY 
 
 
     def run(self, steps = 1):

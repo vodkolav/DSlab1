@@ -47,6 +47,19 @@ def circumference(XY):
     return C 
 
 
+def grain(func, n):
+    T = np.linspace(0, np.pi*2, n, endpoint=False) + 0.0001
+    # T = np.append(T, T[:1])
+    I = np.arange(len(T))
+    # Calculate Radius for each Theta
+    R = func(T)
+    RT = np.stack((R,T), axis=1)
+
+    X, Y = pol2cart(R, T)
+    XY = np.stack((X,Y), axis=1)
+
+    return I, RT, XY 
+
 
 def normals(XY):
 
