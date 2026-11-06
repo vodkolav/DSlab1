@@ -149,6 +149,8 @@ def element_contour_P1(val, W, x_verts, y_verts, tol=1e-6):
 
 def extract_contour_P1(levels, nodes, connectivity, field, plot=False):
     contour_lengths = np.zeros_like(levels)
+    contour_npoints = np.zeros_like(levels)
+
     n_elements = np.shape(connectivity)[1] # skfem format
 
     if plot:
@@ -171,6 +173,7 @@ def extract_contour_P1(levels, nodes, connectivity, field, plot=False):
                                                    x_verts, 
                                                    y_verts )
             contour_lengths[i] += l
+            contour_npoints[i] += 1
 
             if plot and l > 1e-6:
                 plt.plot([x1, x2], [y1, y2], 'b-', lw=2)
@@ -178,7 +181,7 @@ def extract_contour_P1(levels, nodes, connectivity, field, plot=False):
     if plot:
         plt.show()
 
-    return contour_lengths
+    return contour_lengths, contour_npoints
 
 if __name__ == '__main__':
     x_verts = np.array([1, 2, 1.5])

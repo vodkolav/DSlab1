@@ -59,6 +59,11 @@ class SimPipeline(Pipeline):
 
         self.SIM = Lagrangian(self.profile, self.physics, **new_case.config["simulation"])
 
+        confclass = new_case.config["simulation"]["class"]
+
+        if confclass != self.SIM.__name__:
+            self.tele.warning(f"simulation class ({confclass}) in config differs from pipeline.")
+
         return self.SIM
 
     def run_case(self, ):

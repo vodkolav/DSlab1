@@ -55,7 +55,10 @@ class Lagrangian:
         #Variables
         self.SimStep=-1
         self.Time = 0
+        self.Web = 0
         self.I, self.RT, self.XY = grain(func, self.n)
+
+        self.validate_grain()
 
         # segment direction vectors; size: [n,2]
         self.S = segments(self.XY)
@@ -97,6 +100,15 @@ class Lagrangian:
 
     def dump_simulation(self, fnlocals):
         pass
+
+
+    def validate_grain(self):
+        R = self.RT[:,0]
+        if any(R<0):
+            raise ValueError("Grain validation error: shape Radius cannot be negative")
+        if any(R > self.Ph.hr):
+            raise ValueError("Grain validation error: initial shape outside of the casing")
+
 
     def curve_intersections(self, XY):
         """Find intersections within sliding windows.
@@ -339,17 +351,18 @@ class Lagrangian:
         self.S = segments(XY2)
         self.M = Magn(self.S)
 
-        C = np.sum(self.M*A2)
+        Perimeter = np.sum(self.M*A2)
 
 
-        inpt = {r"J_{s}": C, r"Delta_{r}": self.d}
+        inpt = {r"J_{s}": Perimeter, r"Delta_{r}": self.d}
 
-        Thrust, Delta_t = self.Ph.calculate(inpt)
+        Thrust, Delta_t, P_c = self.Ph.calculate(inpt)
 
+        self.Web+=self.d
         self.Time+=Delta_t
 
         npoints = len(self.I)
-        self.tele.ping("step:", self.SimStep, " | points:", npoints, " | circumference:", C)
+        self.tele.ping("step:", self.SimStep, " | points:", npoints, " | perimeter:", Perimeter)
 
         self.dump_simulation(locals())
 
@@ -381,6 +394,7 @@ class Lagrangian:
         self.tele.print('Simulation Steps:', steps)
         self.tele.print('Curve points (n):', self.n)
 
+        self.Web = 0
         self.Time = 0
 
         for self.SimStep in range(steps+1):
@@ -409,26 +423,27 @@ class Physics(EquationsManager):
     def __init__(self, canvas, overrides: dict):
         super().__init__(canvas)
         self.inputs = [r"J_{s}", r"Delta_{r}"]
-        self.outputs = [r"F", r"Delta_{t}"]
+        self.outputs = [r"F", r"Delta_{t}", r'P_c']
 
         self.overrides(overrides)
 
         self.make_replacements()
 
-        self.expressions = [self.substitute(self.expression(E)) for E in self.outputs]
+        self.expressions = {E: self.substitute(self.expression(E)) for E in self.outputs}
 
-        self.lambdas = [self.lambdify(expr) for expr in self.expressions]
+        self.lambdas = {name: self.lambdify(expr) for name, expr in self.expressions.items()}
 
 
     def calculate(self, input: dict):
 
-        F = self.lambdas[0](input[r"J_{s}"])
-        delta_t = self.lambdas[1](*input.values())
+        results = {}
 
-        # input = {k:self.expression(v) for k,v in input.items()}
-        # result = [E.evalf(subs=input) for E in self.expressions]
+        for Outpt, (Lambda,Vars) in self.lambdas.items():
+            Inpts = [input[v.name] for v in Vars]
+            results[Outpt] = Lambda(*Inpts)
 
-        return F, delta_t
+        return results.values()
+
 
     @property
     def hr(self):

@@ -5,11 +5,11 @@ os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 import torch
 import torch.nn as nn
 
-from Plots import Chamber_Pressure_Plots, Chamber_Pressure_Plots2, Trajectory_Plots
+from Rockets.Kang.Plots import Chamber_Pressure_Plots, Chamber_Pressure_Plots2, Trajectory_Plots
 
 import numpy as np
 import matplotlib.pyplot as plt
-from saburnbackfinal import solve_burnback, solve_SA, pressure_profile, energy_sf, transition_sf
+from Rockets.Kang.saburnbackfinal import solve_burnback, solve_SA, pressure_profile, energy_sf, transition_sf
 from time import perf_counter
 #import matplotlib2tikz
 
@@ -80,7 +80,7 @@ if __name__ == '__main__':
     print(x_in)
 
     mesh_in, S_in = solve_burnback(a_in, b_in, m_in, n1_in, n2_in, n3_in, plot=True)
-    web_in, Ps_in, time_in = pressure_profile(mesh_in, S_in, plot=True)
+    web_in, Ps_in, time_in, perimeters, npoints = pressure_profile(mesh_in, S_in, plot=True)
 
     curves_in = []
     t_in = np.linspace(0, web_in[-1], len(Ps_in))
@@ -106,7 +106,7 @@ if __name__ == '__main__':
     print(x_pred)
 
     mesh_pred, S_pred = solve_burnback(a_pred, b_pred, m_pred, n1_pred, n2_pred, n3_pred, plot=True)
-    web_pred, Pc_pred, time_pred = pressure_profile(mesh_pred, S_pred, DT=1e-2, plot=True)
+    web_pred, Pc_pred, time_pred, perimeters, npoints = pressure_profile(mesh_pred, S_pred, DT=1e-2, plot=True)
 
     mse_val = energy_sf(x_pred, web_in, Ps_in, n_div =100)
 
@@ -142,7 +142,7 @@ if __name__ == '__main__':
         plot=True
     )
 
-    webs, Ps, time_s = pressure_profile(mesh_opt, S_opt, plot=True)
+    webs, Ps, time_s, perimeters, npoints= pressure_profile(mesh_opt, S_opt, plot=True)
 
     end = perf_counter()
     code_run_time = end-start

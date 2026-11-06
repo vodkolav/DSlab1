@@ -1,10 +1,10 @@
 ### SACASE4.py  
 
-from Plots import Chamber_Pressure_Plots, Trajectory_Plots
+from Rockets.Kang.Plots import Chamber_Pressure_Plots, Trajectory_Plots
 
 import numpy as np
 import matplotlib.pyplot as plt
-from saburnbackfinal import solve_burnback, solve_SA, pressure_profile, energy_sf, transition_sf
+from Rockets.Kang.saburnbackfinal import solve_burnback, solve_SA, pressure_profile, energy_sf, transition_sf
 from time import perf_counter
 #import matplotlib2tikz
 
@@ -66,7 +66,7 @@ if __name__ == '__main__':
     print(x_sf_ref)
 
     mesh_ref, S_ref = solve_burnback(a_ref, b_ref, m_ref, n1_ref, n2_ref, n3_ref, plot=True)
-    web_ref, Ps_ref, time_ref = pressure_profile(mesh_ref, S_ref, plot=True)
+    web_ref, Ps_ref, time_ref, perimeters, npoints = pressure_profile(mesh_ref, S_ref, plot=True)
 
     # Random initial guess parameters
     a0 = np.random.uniform(A_MIN, A_MAX)
@@ -82,7 +82,7 @@ if __name__ == '__main__':
     print(x_sf_0)
 
     mesh0, S0 = solve_burnback(a0, b0, m0, n10, n20, n30, plot=True)
-    web_0, Ps_0, time_0 = pressure_profile(mesh0, S0, plot=True)
+    web_0, Ps_0, time_0, perimeters, npoints = pressure_profile(mesh0, S0, plot=True)
 
     mse_val = energy_sf(x_sf_0, web_ref, Ps_ref, n_div =100)
 
@@ -121,7 +121,7 @@ if __name__ == '__main__':
         plot=True
     )
 
-    webs, Ps, time_s = pressure_profile(mesh_opt, S_opt, plot=True)
+    webs, Ps, time_s, perimeters, npoints = pressure_profile(mesh_opt, S_opt, plot=True)
 
     end = perf_counter()
     code_run_time = end-start

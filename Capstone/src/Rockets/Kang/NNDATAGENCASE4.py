@@ -6,7 +6,7 @@
 # Constant Parameters: n1, n2 = n3
 
 import numpy as np
-from saburnbackfinal import solve_burnback, pressure_profile
+from Rockets.Kang.saburnbackfinal import solve_burnback, pressure_profile
 
 A_MIN = 0.1
 A_MAX = 0.8
@@ -41,7 +41,7 @@ if __name__ == '__main__':
         # print(x_sf_ref)
 
         mesh_ref, S_ref = solve_burnback(a_ref, b_ref, m_ref, n1_ref, n2_ref, n3_ref, plot=False)
-        ts_ref, Ps_ref, _ = pressure_profile( mesh_ref, S_ref, plot=False)
+        ts_ref, Ps_ref, time_vals, perimeters, npoints  = pressure_profile( mesh_ref, S_ref, plot=False)
 
         Pc_vals = np.append(Ps_ref, ts_ref[-1])
 

@@ -25,6 +25,7 @@ simParams = dict(
  Ro=1.0, 
  Ri=0.1,
 )
+simParams["class"] = "FemSim",
 
 PhysicsParams = dict(
     rho_p = 1700.0,
@@ -43,7 +44,8 @@ tracks = {
             ,
         "simulation": {
                 "func_name": "dump_simulation", 
-                "varnames": [ "web_vals", "Pc_MPA", "time_vals"],
+                "varnames": ["SimStep", "Web", "Time", 
+                             "Perimeter", "npoints", "Thrust", "P_C"],
                 "on_size_mismatch": "error"
         }
     }

@@ -186,6 +186,7 @@ def preproc_log_data(logdata: dict, epoch_precision = "s"):
 def preproc_sim_data(HSsim):
 
     dfSim = pd.DataFrame(HSsim).dropna()
+    dfSim['Delta_t'] = np.concatenate([[0], np.diff(dfSim['Time'])])
     # dfSim.SimStep = dfSim.SimStep.apply(lambda x: x[0])
     # dfSim.C = dfSim.C.apply(lambda x: x[0])
     # dfSim.npoints = dfSim.npoints.apply(lambda x: x[0])
@@ -445,11 +446,11 @@ def Web(curvesDF, hull_radius, color='StepMod10', **kwargs):
 
 def Perf(simDF , **kwargs):
 
-    circ = px.line(simDF, x = 'SimStep', y = 'C', 
+    circ = px.line(simDF, x = 'SimStep', y = 'Perimeter', 
                    color_discrete_sequence=['red'], **kwargs)
-    circ.update_traces(name = 'circumference', line=dict(width=2))
+    circ.update_traces(name = 'Perimeter', line=dict(width=2))
 
-    circ.update_yaxes(title='circumference', 
+    circ.update_yaxes(title='Perimeter', 
                       tickfont=dict(color='red'))
 
     pnts = px.line(simDF, x = 'SimStep', y = 'npoints',

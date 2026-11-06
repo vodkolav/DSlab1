@@ -9,7 +9,7 @@ import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader, random_split
 
 import matplotlib.pyplot as plt
-from saburnbackfinal import solve_burnback, pressure_profile, solve_SA, energy_sf
+from Rockets.Kang.saburnbackfinal import solve_burnback, pressure_profile, solve_SA, energy_sf
 from time import perf_counter
 start = perf_counter()
 
@@ -161,7 +161,7 @@ for i in range(100):
     x_pred = np.array([a_pred, b_pred, m_pred, n1_pred, n2_pred, n3_pred])
 
     mesh_in, S_in = solve_burnback(a_in, b_in, m_in, n1_in, n2_in, n3_in, plot=False)
-    web_in, Ps_in, time_in = pressure_profile(mesh_in, S_in, plot=False)
+    web_in, Ps_in, time_in, perimeters, npoints = pressure_profile(mesh_in, S_in, plot=False)
 
     mse_val = energy_sf(x_pred, web_in, Ps_in, n_div=100)
     mse_list.append(mse_val)

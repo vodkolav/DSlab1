@@ -64,7 +64,9 @@ class EquationsManager:
         # node = canvas['nodes'][6]
 
         Formulas = [parse_md(node['text']) for node in canvas['nodes']]
-        self.Formulas = pd.concat(Formulas)
+        Formulas = pd.concat(Formulas)
+        Formulas['Alias'] = Formulas.Param.str.replace(r"{","").str.replace(r"}","")
+        self.Formulas = Formulas
 
 
     def make_replacements(self):
@@ -80,7 +82,14 @@ class EquationsManager:
 
 
     def expression(self, name:str):
-        return self.Formulas.loc[self.Formulas.Param == name,  "expr"].values[0]
+
+        if name in self.Formulas.Param.values:
+            return self.Formulas.loc[self.Formulas.Param == name,  "expr"].values[0]
+        
+        if name in self.Formulas.Alias.values:
+            return self.Formulas.loc[self.Formulas.Alias == name,  "expr"].values[0]
+        else:
+            raise ValueError(f"Expression '{name}' not found in table of formulas. Check spelling.")
 
 
     def substitute(self, expression: Expr, consts = True):
@@ -115,4 +124,4 @@ class EquationsManager:
 
         l_func = lambdify(vars, expression, modules='numpy')
 
-        return l_func
+        return l_func, vars

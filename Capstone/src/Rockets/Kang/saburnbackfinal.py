@@ -92,8 +92,8 @@ def pressure_profile(mesh, S, DT=1e-2, plot=False,
     Pc_curve = np.zeros_like(web_vals)
     Pc_curve[0] = PC0
 
-    perimeters = extract_contour_P1(
-        web_vals[1:], 
+    perimeters, npoints = extract_contour_P1(
+        web_vals, 
         mesh.vertices[:,:2].T,
         mesh.triangles[:,:3].T - 1,
         S,
@@ -101,7 +101,7 @@ def pressure_profile(mesh, S, DT=1e-2, plot=False,
     )
 
     Pc_curve[1:] = np.power(
-        (rho_p * perimeters * a * c_star / At),
+        (rho_p * perimeters[1:] * a * c_star / At),
         (1/(1 - n))
     )
 
@@ -112,8 +112,9 @@ def pressure_profile(mesh, S, DT=1e-2, plot=False,
 
     time_vals = [0]
     for i in range(len(web_vals)-1):
-        t_new = 0.5*((1/(a*Pc_curve[i]**n))+(1/(a*
-            Pc_curve[i+1]**n)))*(web_vals[i+1]-web_vals[i])+time_vals[i]
+        t_new = 0.5*((1/(a*Pc_curve[i  ]**n))+
+                     (1/(a*Pc_curve[i+1]**n)))*(web_vals[i+1]-web_vals[i]) 
+        + time_vals[i]
         time_vals.append(t_new)
 
     if plot:
@@ -132,7 +133,7 @@ def pressure_profile(mesh, S, DT=1e-2, plot=False,
         plt.grid()
         # plt.show()
 
-    return web_vals, Pc_MPA, time_vals
+    return web_vals, Pc_curve, time_vals, perimeters, npoints
 
 
 def solve_SA(
@@ -190,7 +191,7 @@ def energy_sf(x, ts_ref, Ps_ref, n_div=100):
         x[4],
         x[5])
 
-    ts, Ps, _ = pressure_profile(mesh, S)
+    ts, Ps, time_vals, perimeters, npoints = pressure_profile(mesh, S)
 
     t_end = ts[-1]
     t_end_ref = ts_ref[-1]
