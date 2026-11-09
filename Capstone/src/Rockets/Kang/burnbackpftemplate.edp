@@ -80,7 +80,7 @@ varf tangentEikonal(uh, wh) =
 
 varf residueEikonal(uh, wh) =
     int2d(Th)(
-            phi * (1 - v*v * (dx(S)  *dx(S) + dy(S)  *dy(S))) * wh
+                  phi * (1 - v*v * (dx(S)  *dx(S) + dy(S)  *dy(S))) * wh
         - (alfa + C*(1 - phi)^2) * (dx(S)  *dx(wh)+ dy(S)  *dy(wh))
                  + 2*C*(1 - phi) * (dx(phi)*dx(S) + dy(phi)*dy(S))  * wh
     )

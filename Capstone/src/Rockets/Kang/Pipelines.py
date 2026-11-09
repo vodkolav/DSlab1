@@ -65,11 +65,11 @@ class FemSimPipeline(Pipeline):
         # runs after each case is completed, and after telemetry has collected all data for the case.
         # can be used to generate plots, summaries, etc. based on the collected telemetry data.
         pass
-        # case_file = self.tele.CAse.case_filename(field='case_signature')
+        case_file = self.tele.CAse.case_filename(field='case_signature')
 
-        # WaP = WebAndPerf(self.tele.CAse)
+        WaP = WebAndPerf(self.tele.CAse)
 
-        # save_fig(WaP,save_path= case_file + ".html")
+        save_fig(WaP,save_path= case_file + ".html")
 
 
     def results(self):

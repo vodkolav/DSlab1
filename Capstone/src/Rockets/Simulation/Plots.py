@@ -2,9 +2,10 @@ import numpy as np
 import pandas as pd
 import plotly.figure_factory as ff
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import plotly.express as px
-from Rockets.Geometry import pol2cart, cart2pol
+from plotly.subplots import make_subplots
+from Rockets.Geometry import pol2cart, cart2pol, grain
+from Rockets.Superformula.Formulas import formula1
 from Rockets.utils import trypop, ia
 from Benchmarking.Case import  Case
 
@@ -239,8 +240,14 @@ def preproc_curves_data(HScurves, dopad = False, **kwargs):
 
     HScurves = pd.DataFrame(HScurves)
 
-    B = HScurves.get("B",HScurves.get("IsNew")) # backward compatibility fallback for B's old name
-    F = HScurves.get("F",HScurves.get("filt"))
+    dummy = np.zeros(HScurves.shape[0]).astype(bool)
+
+    B = HScurves.get("B",HScurves.get("IsNew", dummy)) # backward compatibility fallback for B's old name
+    F = HScurves.get("F",HScurves.get("filt", dummy))
+    
+    if "A" not in HScurves.columns:
+        HScurves["A"] = ~dummy
+
     E = ~HScurves.A
 
     HScurves["stat"] =  F*1 + B*4 + E*2 
@@ -467,11 +474,11 @@ def Perf(simDF , **kwargs):
 def PerPh(simDF, **kwargs):
     # physical performance
 
-    Thrust = px.line(simDF, x = 'Time', y = 'Thrust', 
+    Thrust = px.line(simDF, x = 'Time', y = 'P_c', 
                    color_discrete_sequence=['red'], **kwargs)
-    Thrust.update_traces(name = 'Thrust', line=dict(width=2))
+    Thrust.update_traces(name = 'Chamber pressure', line=dict(width=2))
 
-    Thrust.update_yaxes(title='Thrust', 
+    Thrust.update_yaxes(title='Chamber pressure', 
                       tickfont=dict(color='red'))
 
     delta_t = px.line(simDF, x = 'Time', y = 'Delta_t',
@@ -484,12 +491,37 @@ def PerPh(simDF, **kwargs):
     return Thrust, delta_t
 
 
+def get_outer_radius(CAse):
+    # hopefully temporary workaround until I decide 
+    # what outer radius is a property of: physics or simulation
+    try:
+        return CAse.get_path("config.Physics.R")
+    except:
+        return CAse.get_path("config.simulation.Ro")
+
+
+def Initial(**kwargs):
+    """ Plot initial shape
+        kwargs (dict): named parameters of Superformula
+    Returns:
+        Figure: figure with initial shape plot
+    """
+
+    f1 = formula1(**kwargs)
+    I, RT, XY  = grain(f1, 1000)
+    return go.Figure(go.Scatter(x = XY[:,0], y = XY[:,1],line=dict(color='black'), name="initial"))
+
+
 def WebAndPerf(CAse):
 
     config = CAse.config
 
     simdf = preproc.sim(CAse)
     curvesdf, colmap =  preproc.curves(CAse)
+
+    if config['Aux']["SimulationClass"] == "FemSim":
+        curvesdf.sort_values(["SimStep", "patch", "I"],inplace= True)
+
 
     subplots_config = {
         "rows": 2, 
@@ -512,14 +544,15 @@ def WebAndPerf(CAse):
     MP.update_layout(width=1200);
 
 
-    maxsteps = config["simulation"]["steps"]
+    maxsteps = config["Aux"]["steps"]
 
     cir, pts = Perf(simdf, range_x = [-1,maxsteps+1])
 
     thr, tim = PerPh(simdf)
 
 
-    add_plot(MP, Web(curvesdf, hull_radius=  config["Physics"]["R"], lockscale=True), row=1, col=1)
+    add_plot(MP, Web(curvesdf, hull_radius=get_outer_radius(CAse), lockscale=True), row=1, col=1)
+    add_plot(MP, Initial(**config["SFparams"]), row=1, col=1)
 
     add_plot(MP, thr , row=1, col=2, secondary_y=False)
     add_plot(MP, tim , row=1, col=2, secondary_y=True)
@@ -687,16 +720,20 @@ def add_plot(multiplt: go.Figure, plot: go.Figure, row, col, secondary_y=False):
 
         multiplt.add_trace(trace, row=row, col=col, secondary_y=secondary_y)
 
-    # add_trace does not update axes for some reason. have to it myself
-    mpyx = list(multiplt.select_yaxes(row=row, col=col, secondary_y=secondary_y))[0]
+    # add_trace does not update axes for some reason. have to do it myself
     pltyx = list(plot.select_yaxes())[0]
-    spec = {k:v for k,v in pltyx._props.items() if k not in mpyx._props}
-    multiplt.update_yaxes(spec, row=row, col=col, secondary_y=secondary_y)
-
-    mpxx = list(multiplt.select_xaxes(row=row, col=col, ))[0]
+    
+    if bool(pltyx._props):
+        mpyx = list(multiplt.select_yaxes(row=row, col=col, secondary_y=secondary_y))[0]
+        spec = {k:v for k,v in pltyx._props.items() if pltyx._props and k not in mpyx._props}
+        multiplt.update_yaxes(spec, row=row, col=col, secondary_y=secondary_y)
+    
     pltxx = list(plot.select_xaxes())[0]
-    spec = {k:v for k,v in pltxx._props.items() if k not in mpxx._props}
-    multiplt.update_xaxes(spec, row=row, col=col)
+    
+    if bool(pltxx._props):
+        mpxx = list(multiplt.select_xaxes(row=row, col=col, ))[0]
+        spec = {k:v for k,v in pltxx._props.items() if k not in mpxx._props}
+        multiplt.update_xaxes(spec, row=row, col=col)
 
     for f in plot.select_shapes():
         multiplt.add_shape(f, row=row, col=col)

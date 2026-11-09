@@ -39,6 +39,11 @@ PhysicsParams = {
     'R_{P}': 1/70,
 }
 
+AuxParams = {
+    "SimulationClass": "Lagrangian",
+    "steps": 500,
+    "R": PhysicsParams["R"]
+}
 
 dataroot = "/home/michael/Studies/DSlab/Capstone/data/"
 
@@ -92,7 +97,8 @@ cases = [{"config":{
                    "stem": p.stem}, 
               "SFparams": parse_sf_params(p.stem),
               "simulation": simParams,
-              "Physics": PhysicsParams},
+              "Physics": PhysicsParams,
+              "Aux": AuxParams},
           "ID": 
               {"case_signature": p.stem},
           "tracks": deepcopy(tracks)
@@ -119,7 +125,7 @@ bench.configure(SimPipeline)
 # """
 # cases = JQ(cases, filter_query)
 
-bench.set_cases(cases) # res) 
+bench.set_cases(cases[6:9]) # res) 
 # bench.unfurl_grid(case_template, chosengrid)
 
 bench.run_experiments()

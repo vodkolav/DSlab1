@@ -19,13 +19,11 @@ from Benchmarking.Benchmarking import Bench
 print(os.getcwd())
 
 simParams = dict(
- nm_o=100, 
- nm_i=100, 
- C_pf=1e8, 
- Ro=1.0, 
- Ri=0.1,
-)
-simParams["class"] = "FemSim",
+    nm_o=100, 
+    nm_i=100, 
+    C_pf=1e8, 
+    Ro=1.0, 
+    Ri=0.1)
 
 PhysicsParams = dict(
     rho_p = 1700.0,
@@ -34,6 +32,11 @@ PhysicsParams = dict(
     n = 0.3,
     At = 5e-2)
 
+AuxParams = {
+    "SimulationClass": "FemSim",
+    "steps": 500,
+    "R": simParams["Ro"]
+}
 
 tracks = {
     "harvest": {
@@ -42,10 +45,16 @@ tracks = {
             "varnames": ["I", "X", "Y", "SimStep", "lvl", "patch", "npoints"],
             "on_size_mismatch": "error"}
             ,
+        "mesh": {
+            "func_name": "dump_mesh", 
+            "varnames": ["mesh_ref.x", "mesh_ref.y", "triangles", "S_ref"],
+            "on_size_mismatch": "warn",
+            "break_2d_vectors": False}
+            ,
         "simulation": {
                 "func_name": "dump_simulation", 
                 "varnames": ["SimStep", "Web", "Time", 
-                             "Perimeter", "npoints", "Thrust", "P_C"],
+                             "Perimeter", "npoints", "Thrust", "P_c"],
                 "on_size_mismatch": "error"
         }
     }
@@ -93,7 +102,8 @@ paths = [case1, case2]
 cases = [{"config":{
               "SFparams": p,
               "simulation": simParams,
-              "Physics": PhysicsParams},
+              "Physics": PhysicsParams,
+              "Aux": AuxParams},
           "ID": 
               {"case_signature": signature(p)},
           "tracks": deepcopy(tracks)

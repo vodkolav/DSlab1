@@ -87,8 +87,9 @@ def pressure_profile(mesh, S, DT=1e-2, plot=False,
                      At = 5e-2
                      ):
 
-    n_levels = int(np.max(S)/DT) + 1
-    web_vals = np.linspace(0, np.max(S), n_levels)
+    sz = np.max(S) - np.min(S)
+    n_levels = int(sz/DT) + 1
+    web_vals = np.linspace(np.min(S), np.max(S), n_levels)
     Pc_curve = np.zeros_like(web_vals)
     Pc_curve[0] = PC0
 

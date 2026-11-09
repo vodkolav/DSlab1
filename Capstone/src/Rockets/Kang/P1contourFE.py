@@ -173,7 +173,7 @@ def extract_contour_P1(levels, nodes, connectivity, field, plot=False):
                                                    x_verts, 
                                                    y_verts )
             contour_lengths[i] += l
-            contour_npoints[i] += 1
+            contour_npoints[i] += 1 if l>0 else 0
 
             if plot and l > 1e-6:
                 plt.plot([x1, x2], [y1, y2], 'b-', lw=2)

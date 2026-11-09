@@ -61,7 +61,7 @@ class SimPipeline(Pipeline):
 
         confclass = new_case.config["simulation"]["class"]
 
-        if confclass != self.SIM.__name__:
+        if confclass != type(self.SIM).__name__:
             self.tele.warning(f"simulation class ({confclass}) in config differs from pipeline.")
 
         return self.SIM

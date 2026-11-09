@@ -23,7 +23,8 @@ class FemSim:
     def dump_curves(self, fnlocals):
         pass
 
-
+    def dump_mesh(self, fnlocals):
+        pass
 
     def run(self, steps = 1):
         """runs the simulation
@@ -34,7 +35,12 @@ class FemSim:
         Returns:
             dict: dictionary of results data
         """
-        mesh, S = self.solve_burnback()
+
+        params = self.SFparams.copy()
+        params.update(self.simParams)
+        # params = self.rename_sf_params(params)
+
+        mesh, S = self.solve_burnback(**params)
 
         self.feed_curves(mesh, S)
 
@@ -46,20 +52,23 @@ class FemSim:
         self.dump_simulation(locals())
 
 
-    def rename_sf_params(self, params: dict):
-        renames = { 'm': 'M',
-                    'a': 'A',
-                    'b': 'B',
-                    'n_1': 'N1',
-                    'n_2': 'N2',
-                    'n_3': 'N3'}
-        return {renames[k]:v for k,v in params.items() if k in renames}
+    def solve_burnback(self,
+        a, b, m, n_1, n_2, n_3,
+        nm_o=100, nm_i=100, C_pf=1e8, Ro=1.0, Ri=0.1):
 
-
-    def solve_burnback(self):
-
-        params = self.rename_sf_params(self.SFparams)
-        params.update(self.simParams)
+        params = {
+            'M': m,
+            'A': a,
+            'B': b,
+            'N1': n_1,
+            'N2': n_2,
+            'N3': n_3,
+            'NMO': nm_o,
+            'NMI': nm_i,
+            'CPF': C_pf,
+            'RO': Ro,
+            'RI': Ri
+        }
 
         exports = self.runner.execute(params)
 
@@ -74,12 +83,13 @@ class FemSim:
 
 
     def emit(self, From, web_vals):
-        for i,lvl in enumerate(web_vals): 
-            for j,p in enumerate(From.allsegs[i]):
+        for S,lvl in enumerate(web_vals): 
+            for j,p in enumerate(From.allsegs[S]):
                 p = np.vstack([p,[np.nan, np.nan]])
                 idx = np.arange(p.shape[0])
+                idx = idx.max() - idx
                 yield {"I": idx, "X": p[:,0], "Y": p[:,1], 
-                    "SimStep": i, "lvl":lvl ,"patch": j , 
+                    "SimStep": S, "lvl":lvl ,"patch": j , 
                     "npoints": p.shape[0]}
 
 
@@ -90,10 +100,13 @@ class FemSim:
         triangles = mesh_ref.triangles[:, :3] - 1  # convert to zero-based indices
         tri = mtri.Triangulation(mesh_ref.x, mesh_ref.y, triangles=triangles)
 
+        self.dump_mesh(locals())
+
         #TODO: parametrize this too
         DT = 0.01
-        n_levels = int(np.max(S_ref)/DT) + 1
-        web_vals = np.linspace(0, np.max(S_ref), n_levels)
+        sz = np.max(S_ref) - np.min(S_ref)
+        n_levels = int(sz/DT) + 1
+        web_vals = np.linspace(np.min(S_ref), np.max(S_ref), n_levels)
         
         contours = plt.tricontour(tri, S_ref, levels=web_vals,)
 
