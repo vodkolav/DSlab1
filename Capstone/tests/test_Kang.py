@@ -19,6 +19,7 @@ from Benchmarking.Benchmarking import Bench
 print(os.getcwd())
 
 simParams = dict(
+    Class="FemSim",
     nm_o=100, 
     nm_i=100, 
     C_pf=1e8, 
@@ -26,14 +27,13 @@ simParams = dict(
     Ri=0.1)
 
 PhysicsParams = dict(
-    rho_p = 1700.0,
-    c_star = 1400.0,
+    At = 5e-2,
     a = 2e-4,
     n = 0.3,
-    At = 5e-2)
+    rho_p = 1700.0,
+    c_star = 1400.0)
 
 AuxParams = {
-    "SimulationClass": "FemSim",
     "steps": 500,
     "R": simParams["Ro"]
 }
@@ -54,7 +54,7 @@ tracks = {
         "simulation": {
                 "func_name": "dump_simulation", 
                 "varnames": ["SimStep", "Web", "Time", 
-                             "Perimeter", "npoints", "Thrust", "P_c"],
+                             "Perimeter", "npoints", "tpoints", "Thrust", "P_c"],
                 "on_size_mismatch": "error"
         }
     }

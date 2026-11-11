@@ -2,6 +2,7 @@
 
 from Rockets.Simulation.Plots import WebAndPerf, save_fig
 from Rockets.Kang.FemSim import FemSim
+from Rockets.utils import trypop
 
 from Benchmarking.Pipeline import Pipeline
 from Benchmarking.telemetry_manager import TelemetryManager
@@ -45,10 +46,17 @@ class FemSimPipeline(Pipeline):
     def init_sim(self, new_case):
 
         sfparams = new_case.config["SFparams"]
+
         simparms = new_case.config["simulation"]
+        confclass = trypop(simparms, "Class", "FemSim")
+
         Physics = new_case.config["Physics"]
 
         self.SIM = FemSim(sfparams, Physics, simparms )
+
+        if confclass != type(self.SIM).__name__:
+            self.tele.warning(f"simulation class ({confclass}) in config differs from pipeline.")
+
 
         return self.SIM
 
@@ -64,7 +72,7 @@ class FemSimPipeline(Pipeline):
         # optional.
         # runs after each case is completed, and after telemetry has collected all data for the case.
         # can be used to generate plots, summaries, etc. based on the collected telemetry data.
-        pass
+
         case_file = self.tele.CAse.case_filename(field='case_signature')
 
         WaP = WebAndPerf(self.tele.CAse)

@@ -17,11 +17,11 @@ from Benchmarking.utils import JQ
 print(os.getcwd())
 
 simParams = {
-"class": "Lagrangian",
-"steps": 500,
-"n": 800,
-"window_size": 100, 
-"interp":  "interp_parametric" #'manydumb'
+    "Class": "Lagrangian",
+    "steps": 500,
+    "n": 800,
+    "window_size": 100, 
+    "interp":  "interp_parametric" #'manydumb'
 }
 
 PhysicsParams = {
@@ -39,9 +39,9 @@ PhysicsParams = {
     'R_{P}': 1/70,
 }
 
+# TODO: maybe better to establish some kind of reference here
 AuxParams = {
-    "SimulationClass": "Lagrangian",
-    "steps": 500,
+    "steps": simParams["steps"],
     "R": PhysicsParams["R"]
 }
 
@@ -83,7 +83,7 @@ tracks = {
         "simulation": {
                 "func_name": "dump_simulation", 
                 "varnames": ["self.SimStep","self.Web", "self.Time",
-                             "Perimeter", "npoints", "Thrust", "P_c"],
+                             "Perimeter", "npoints", "tpoints", "Thrust", "P_c"],
                 "on_size_mismatch": "error"
         }
     }

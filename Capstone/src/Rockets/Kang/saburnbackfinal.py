@@ -114,8 +114,7 @@ def pressure_profile(mesh, S, DT=1e-2, plot=False,
     time_vals = [0]
     for i in range(len(web_vals)-1):
         t_new = 0.5*((1/(a*Pc_curve[i  ]**n))+
-                     (1/(a*Pc_curve[i+1]**n)))*(web_vals[i+1]-web_vals[i]) 
-        + time_vals[i]
+                     (1/(a*Pc_curve[i+1]**n)))*(web_vals[i+1]-web_vals[i]) + time_vals[i]
         time_vals.append(t_new)
 
     if plot:

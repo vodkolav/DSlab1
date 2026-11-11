@@ -26,7 +26,7 @@ class FemSim:
     def dump_mesh(self, fnlocals):
         pass
 
-    def run(self, steps = 1):
+    def run(self, *args, **kwargs):
         """runs the simulation
 
         Args:
@@ -45,7 +45,7 @@ class FemSim:
         self.feed_curves(mesh, S)
 
         Web, P_c, Time, Perimeter, npoints = self.pressure_profile(mesh, S)
-
+        tpoints = npoints
         Thrust = 0 # Kang does not calculate it. I might later...
         SimStep = np.arange(len(Web))
 

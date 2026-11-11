@@ -165,6 +165,7 @@ def pad(df: pd.DataFrame, cols = ['frame', 'category'] ):
 
 
 def preproc_log_data(logdata: dict, epoch_precision = "s"):
+    #TODO: move this to Benchmarking package. Logs are universal to any kind of pipeline/workflow
     colmap = { "ping": "green", "info": "blue", "warning": "orange", "error": "red"}
     ymap = {"ping": 0, "info": 1, "warning": 2, "error": 3}
 
@@ -519,8 +520,9 @@ def WebAndPerf(CAse):
     simdf = preproc.sim(CAse)
     curvesdf, colmap =  preproc.curves(CAse)
 
-    if config['Aux']["SimulationClass"] == "FemSim":
+    if config['simulation']["Class"] == "FemSim":
         curvesdf.sort_values(["SimStep", "patch", "I"],inplace= True)
+        simdf.sort_values(["SimStep"],inplace= True)
 
 
     subplots_config = {

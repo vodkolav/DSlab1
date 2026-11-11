@@ -361,8 +361,11 @@ class Lagrangian:
         self.Web+=self.d
         self.Time+=Delta_t
 
-        npoints = len(self.I)
-        self.tele.ping("step:", self.SimStep, " | points:", npoints, " | perimeter:", Perimeter)
+        npoints = A2.sum() # active points
+        tpoints = len(self.I) # total points
+        #TODO: think about dropping inactive points for effeciency. 
+        # but careful, we need some of them for derivatives
+        self.tele.ping("step:", self.SimStep, " | points(active,total): (", npoints, tpoints, ") | perimeter:", Perimeter)
 
         self.dump_simulation(locals())
 
@@ -380,7 +383,7 @@ class Lagrangian:
         return "TODO: come up with something"
 
 
-    def run(self, steps = 1):
+    def run(self, steps = 1, *args, **kwargs):
         """runs the simulation
 
         Args:

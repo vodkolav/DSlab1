@@ -3,7 +3,7 @@
 from Rockets.Simulation.Plots import WebAndPerf, save_fig
 from Rockets.Simulation.Simulation import Lagrangian, Physics
 from Rockets.Superformula.Formulas import formula1, formula2
-from Rockets.utils import describe, clip, shape, pick
+from Rockets.utils import describe, clip, shape, pick, trypop
 
 from Benchmarking.Pipeline import Pipeline
 from Benchmarking.telemetry_manager import TelemetryManager
@@ -57,9 +57,11 @@ class SimPipeline(Pipeline):
 
         self.profile = formula1(**new_case.config["SFparams"])
 
-        self.SIM = Lagrangian(self.profile, self.physics, **new_case.config["simulation"])
+        simparms = new_case.config["simulation"]
 
-        confclass = new_case.config["simulation"]["class"]
+        confclass = trypop(simparms, "Class", "Lagrangian")
+
+        self.SIM = Lagrangian(self.profile, self.physics, **simparms)
 
         if confclass != type(self.SIM).__name__:
             self.tele.warning(f"simulation class ({confclass}) in config differs from pipeline.")
