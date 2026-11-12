@@ -42,7 +42,7 @@ PhysicsParams = {"Lagrangian": {
                     'a': 1.24e-5,
                     'n': 0.4,
                     'rho_{p}': 1600,
-                    'C_{v}': 1500,
+                    'C_star': 1500,
                     'C_{FO}': 1.6,
                     'gamma': 1.2,
                     'P_{a}': 101325,

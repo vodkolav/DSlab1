@@ -52,21 +52,21 @@ def parse_md(nodetext):
     return constsdf
 
 
+def parse_canvas(pth):
+
+    canvas = read_json(pth) 
+    # node = canvas['nodes'][6]
+
+    Formulas = [parse_md(node['text']) for node in canvas['nodes']]
+    Formulas = pd.concat(Formulas)
+    Formulas['Alias'] = Formulas.Param.str.replace(r"{","").str.replace(r"}","")
+    return Formulas
+
+
 class EquationsManager:
 
     def __init__(self, canvas):
-        self.parse_canvas(canvas)
-
-
-    def parse_canvas(self, pth):
-
-        canvas = read_json(pth) 
-        # node = canvas['nodes'][6]
-
-        Formulas = [parse_md(node['text']) for node in canvas['nodes']]
-        Formulas = pd.concat(Formulas)
-        Formulas['Alias'] = Formulas.Param.str.replace(r"{","").str.replace(r"}","")
-        self.Formulas = Formulas
+        self.Formulas = parse_canvas(canvas)
 
 
     def make_replacements(self):
@@ -78,7 +78,7 @@ class EquationsManager:
     def overrides(self, ovrds: dict):
         for k,v in ovrds.items():
             v = parse_latex_with_fallback(v)
-            self.Formulas.loc[self.Formulas.Param == k,  "expr"] = v 
+            self.set_expression(k,v)
 
 
     def expression(self, name:str):
@@ -86,8 +86,20 @@ class EquationsManager:
         if name in self.Formulas.Param.values:
             return self.Formulas.loc[self.Formulas.Param == name,  "expr"].values[0]
         
-        if name in self.Formulas.Alias.values:
+        elif name in self.Formulas.Alias.values:
             return self.Formulas.loc[self.Formulas.Alias == name,  "expr"].values[0]
+        
+        else:
+            raise ValueError(f"Expression '{name}' not found in table of formulas. Check spelling.")
+
+
+    def set_expression(self, name:str, value:str):
+
+        if name in self.Formulas.Param.values:
+            self.Formulas.loc[self.Formulas.Param == name,  "expr"] = value
+        
+        elif name in self.Formulas.Alias.values:
+            self.Formulas.loc[self.Formulas.Alias == name,  "expr"] = value
         else:
             raise ValueError(f"Expression '{name}' not found in table of formulas. Check spelling.")
 

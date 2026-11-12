@@ -423,7 +423,7 @@ class Lagrangian:
 
 class Physics(EquationsManager):
 
-    def __init__(self, canvas, overrides: dict):
+    def __init__(self, canvas, overrides: dict = {}):
         super().__init__(canvas)
         self.inputs = [r"J_{s}", r"Delta_{r}"]
         self.outputs = [r"F", r"Delta_{t}", r'P_c']

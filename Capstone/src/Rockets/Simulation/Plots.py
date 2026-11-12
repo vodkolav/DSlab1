@@ -300,6 +300,13 @@ def preproc_intersections_data(HSintersections, **kwargs):
 class preproc():
 
     @staticmethod
+    def conf(cAse: Case, *args, **kwargs):
+        wat = [pd.Series([f"{k} = {v}" for k,v in vals.items()], name = conf) 
+                for conf, vals in cAse.config.items() ]
+        confdf = pd.DataFrame(wat).T
+        return confdf
+
+    @staticmethod
     def curves(cAse: Case, dopad=True, *args, **kwargs):
         curves_dict = cAse.get_path('tracks.harvest.curves.data')
         curvesdf, color_map = preproc_curves_data(curves_dict, dopad = dopad, *args, **kwargs)
@@ -513,6 +520,33 @@ def Initial(**kwargs):
     return go.Figure(go.Scatter(x = XY[:,0], y = XY[:,1],line=dict(color='black'), name="initial"))
 
 
+def ConfTable(confdf):
+
+    tbl = go.Table(
+    #   columnwidth = cWidths,
+      header=dict(
+        values=list(confdf.columns),
+        # line_color='darkslategray',
+        # fill_color=headerColor,
+        align='left',
+        font=dict(color='black', size=18)
+      ),
+      cells=dict(
+        values=confdf.transpose().values.tolist(),
+        # line_color='darkslategray',
+        # 2-D list of colors for alternating rows
+        #fill_color = [[rowOddColor,rowEvenColor,rowOddColor, rowEvenColor,rowOddColor]*5],
+        align = 'left',
+        font = dict(color = 'darkslategray', size = 12)
+        ))
+    layout=dict(margin=dict(t=10, b=10, l=10, r=10),
+                            # height=20*20 + 30 + 10 + 10,
+                               autosize= True)   
+    
+    fig = go.Figure(data=[tbl], layout=layout)
+    return fig
+
+
 def WebAndPerf(CAse):
 
     config = CAse.config
@@ -524,6 +558,7 @@ def WebAndPerf(CAse):
         curvesdf.sort_values(["SimStep", "patch", "I"],inplace= True)
         simdf.sort_values(["SimStep"],inplace= True)
 
+    confdf = preproc.conf(CAse)
 
     subplots_config = {
         "rows": 2, 
@@ -533,13 +568,14 @@ def WebAndPerf(CAse):
         # "width": 1200,
         "subplot_titles": [
             'Web burned', 
-            'Performance (Seconds vs. Thrust and delta t )' ,
-            'Performance (Steps vs. Circumference and npoints)', 
+            'Performance (Seconds vs. Chamber pressure and delta t )' ,
+            'Configs',
+            'Performance (Steps vs. Perimeter and npoints)', 
             ],
         "horizontal_spacing": 0.1,
         "vertical_spacing": 0.2,
-        "specs":[[{"rowspan":2},{"secondary_y": True}],
-                [    None     ,{"secondary_y": True}]],
+        "specs":[[{                },{"secondary_y": True}],
+                 [{"type": "domain"},{"secondary_y": True}]],
     }
 
     MP = make_subplots( **subplots_config)
@@ -552,9 +588,13 @@ def WebAndPerf(CAse):
 
     thr, tim = PerPh(simdf)
 
+    ct = ConfTable(confdf)
+
 
     add_plot(MP, Web(curvesdf, hull_radius=get_outer_radius(CAse), lockscale=True), row=1, col=1)
     add_plot(MP, Initial(**config["SFparams"]), row=1, col=1)
+
+    add_plot(MP, ct, row=2, col=1)
 
     add_plot(MP, thr , row=1, col=2, secondary_y=False)
     add_plot(MP, tim , row=1, col=2, secondary_y=True)
